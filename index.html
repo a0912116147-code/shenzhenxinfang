@@ -99,6 +99,30 @@
             color: #fff;
         }
 
+        /* 浏览统计按钮 */
+        .stats-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .stats-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-btn:active {
+            transform: scale(0.95);
+        }
+
         /* 语言选择器 */
         .language-selector {
             display: flex;
@@ -579,6 +603,22 @@
             display: flex;
         }
 
+        /* 统计弹窗 */
+        .stats-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .stats-modal.active {
+            display: flex;
+        }
+
         .cart-content {
             background: #fff;
             width: 90%;
@@ -683,6 +723,111 @@
             background: linear-gradient(135deg, #95a5a6, #7f8c8d);
             cursor: default;
             box-shadow: none;
+        }
+
+        /* 统计内容样式 */
+        .stats-content {
+            background: #fff;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stats-header {
+            padding: 20px 24px;
+            background: linear-gradient(135deg, var(--accent-color), #e67e22);
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .stats-close {
+            cursor: pointer;
+            font-size: 24px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .stats-close:hover {
+            opacity: 1;
+        }
+
+        .stats-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .stats-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .stats-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stats-item-count {
+            background: linear-gradient(135deg, var(--accent-color), #e67e22);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .stats-empty {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+        }
+
+        .stats-footer {
+            padding: 16px;
+            background: #fafbfc;
+            border-top: 1px solid #f0f0f0;
+            text-align: center;
+        }
+
+        .stats-clear-btn {
+            background: none;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .stats-clear-btn:hover {
+            background: #e74c3c;
+            color: #fff;
         }
 
         /* 手机适配 */
@@ -990,6 +1135,24 @@
         </div>
     </div>
 
+    <!-- 浏览统计弹窗 -->
+    <div class="stats-modal" id="statsModal">
+        <div class="stats-content">
+            <div class="stats-header">
+                <h3>📊 浏览统计</h3>
+                <span class="stats-close" onclick="closeStats()">×</span>
+            </div>
+
+            <div class="stats-body" id="statsList">
+                <!-- 统计列表将在这里动态生成 -->
+            </div>
+
+            <div class="stats-footer">
+                <button class="stats-clear-btn" onclick="clearStats()">🗑️ 清空统计</button>
+            </div>
+        </div>
+    </div>
+
     <div class="menu-toggle" onclick="toggleMobileMenu()">☰ 目录</div>
     <div class="overlay" onclick="toggleMobileMenu()"></div>
 
@@ -1004,6 +1167,10 @@
                 <button class="lang-btn" data-lang="en-US" onclick="setLanguage('en-US')">English</button>
             </div>
             <div style="font-size:12px; color:#666;" id="vipLabel">贝壳李金松 VIP专属方案</div>
+            <button class="stats-btn" onclick="showStats()">
+                <span>📊</span>
+                <span>浏览统计</span>
+            </button>
         </div>
         <div class="nav-tree" id="navTree"></div>
     </aside>
@@ -1176,6 +1343,77 @@
             }
         }
         initWatermark();
+
+        // --- 浏览统计功能 ---
+        // 记录浏览
+        function recordView(region, sub, proj) {
+            const key = `${region}|${sub}|${proj}`;
+            const stats = JSON.parse(localStorage.getItem('viewStats') || '{}');
+
+            if (!stats[key]) {
+                stats[key] = {
+                    region: region,
+                    sub: sub,
+                    proj: proj,
+                    count: 0,
+                    lastView: new Date().toISOString()
+                };
+            }
+
+            stats[key].count++;
+            stats[key].lastView = new Date().toISOString();
+
+            localStorage.setItem('viewStats', JSON.stringify(stats));
+        }
+
+        // 显示统计弹窗
+        function showStats() {
+            const modal = document.getElementById('statsModal');
+            const list = document.getElementById('statsList');
+
+            modal.classList.add('active');
+
+            const stats = JSON.parse(localStorage.getItem('viewStats') || '{}');
+            const entries = Object.entries(stats);
+
+            if (entries.length === 0) {
+                list.innerHTML = `
+                    <div class="stats-empty">
+                        <p>暂无浏览记录</p>
+                        <p style="font-size:12px; margin-top:10px;">查看楼盘详情后会自动统计</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // 按浏览次数排序
+            const sorted = entries.sort((a, b) => b[1].count - a[1].count);
+
+            list.innerHTML = sorted.map(([key, data]) => `
+                <div class="stats-item">
+                    <div>
+                        <div class="stats-item-name">${data.proj}</div>
+                        <div style="font-size:11px; color:#666; margin-top:4px;">
+                            ${data.region} - ${data.sub}
+                        </div>
+                    </div>
+                    <div class="stats-item-count">${data.count}次</div>
+                </div>
+            `).join('');
+        }
+
+        // 关闭统计弹窗
+        function closeStats() {
+            document.getElementById('statsModal').classList.remove('active');
+        }
+
+        // 清空统计
+        function clearStats() {
+            if (confirm('确定要清空所有浏览统计吗？')) {
+                localStorage.removeItem('viewStats');
+                showStats(); // 刷新显示
+            }
+        }
 
         // --- 数据合并逻辑 ---
         if (typeof db_baoshan !== 'undefined') Object.assign(db, db_baoshan);
@@ -1439,6 +1677,11 @@
         function loadContent(region, sub, proj, typeLabel, htmlContent) {
             const area = document.getElementById('contentArea');
             let content;
+
+            // 记录浏览（排除价格地图）
+            if (proj !== t('priceMap') && proj !== "价格地图" && proj !== "价格总览") {
+                recordView(region, sub, proj);
+            }
 
             // Check if it's price map (handle both Chinese and English)
             if (proj === t('priceMap') || proj === "价格地图" || proj === "价格总览") {
