@@ -231,8 +231,8 @@
 
         /* 内容样式 */
         .content-body p {
-            line-height: 1.8;
-            margin-bottom: 15px;
+            line-height: 1.6;
+            margin-bottom: 12px;
             text-align: justify;
             color: #333;
         }
@@ -241,15 +241,15 @@
             color: #1a5276;
             border-left: 4px solid #2e86c1;
             padding-left: 10px;
-            margin: 30px 0 15px;
-            font-size: 22px;
+            margin: 20px 0 12px;
+            font-size: 18px;
             font-weight: bold;
         }
 
         .content-body h3 {
             color: #2e86c1;
-            margin: 20px 0 10px;
-            font-size: 18px;
+            margin: 15px 0 8px;
+            font-size: 16px;
             font-weight: bold;
         }
 
@@ -519,12 +519,27 @@
             }
 
             .content-wrapper {
-                padding: 70px 20px 20px;
+                padding: 70px 15px 20px;
+            }
+
+            .content-body p {
+                font-size: 14px;
+                line-height: 1.6;
+            }
+
+            .content-body h2 {
+                font-size: 16px;
+                margin: 15px 0 10px;
+            }
+
+            .content-body h3 {
+                font-size: 14px;
+                margin: 12px 0 8px;
             }
 
             .watermark-text {
                 font-size: 13px;
-                margin: 40px 10px;
+                margin: 80px 30px;
                 width: 280px;
             }
         }
@@ -737,8 +752,8 @@
             // 使用 \n 换行，样式中 white-space: pre-wrap 保证换行生效
             const text = "贝壳李金松17277898972\n预约看房领专属折扣（总价的一个点起）";
 
-            // 生成足够多的水印铺满屏幕
-            for (let i = 0; i < 15; i++) {
+            // 生成水印，数量减少避免过于密集
+            for (let i = 0; i < 6; i++) {
                 const div = document.createElement('div');
                 div.className = 'watermark-text';
                 div.innerText = text;
