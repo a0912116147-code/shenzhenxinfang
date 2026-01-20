@@ -311,6 +311,88 @@
             margin: 0 0 20px;
         }
 
+        /* 价格地图容器 */
+        .price-map-container {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            overflow-x: auto;
+        }
+
+        .price-map-container section {
+            margin-bottom: 30px;
+        }
+
+        .price-map-container section:last-child {
+            margin-bottom: 0;
+        }
+
+        .price-map-container h2 {
+            color: var(--primary-dark);
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .price-map-container h3 {
+            color: var(--primary-color);
+            font-size: 17px;
+            font-weight: 600;
+            margin: 20px 0 12px;
+        }
+
+        .price-map-container table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .price-map-container table th,
+        .price-map-container table td {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .price-map-container table th {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            font-weight: 600;
+        }
+
+        .price-map-container table td {
+            background: white;
+        }
+
+        .price-map-container tr:nth-child(even) td {
+            background: #f8f9fa;
+        }
+
+        .price-map-container tr:hover td {
+            background: #e8f4fc;
+        }
+
+        .price-map-container p {
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .price-map-container .warning,
+        .price-map-container .highlight {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
         .content-body ul {
             padding-left: 20px;
             margin: 10px 0;
@@ -836,6 +918,45 @@
                 margin: 100px 40px;
                 width: 260px;
             }
+
+            /* 价格地图移动端优化 */
+            .price-map-container {
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            .price-map-container h2 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+            .price-map-container h3 {
+                font-size: 14px;
+                margin: 14px 0 8px;
+            }
+
+            .price-map-container p {
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            .price-map-container table {
+                font-size: 11px;
+                margin: 12px 0;
+            }
+
+            .price-map-container table th,
+            .price-map-container table td {
+                padding: 8px 6px;
+                font-size: 11px;
+            }
+
+            .price-map-container .warning,
+            .price-map-container .highlight {
+                padding: 12px;
+                margin: 12px 0;
+                font-size: 13px;
+            }
         }
     </style>
 </head>
@@ -1323,9 +1444,9 @@
             if (proj === t('priceMap') || proj === "价格地图" || proj === "价格总览") {
                 const priceMapContent = db[region]['_PRICE_MAP'] || `<div class="placeholder">${t('noData')}</div>`;
                 area.innerHTML = `
-                <div class="breadcrumb">${region} / ${sub} / ${t('priceMap')}</div>
-                <h1 class="page-header">${region} - ${sub}</h1>
-                <div class="content-body">${priceMapContent}</div>`;
+                <div class="breadcrumb">${region} / ${t('priceMap')}</div>
+                <h1 class="page-header">${region} - ${t('priceOverview')}</h1>
+                <div class="price-map-container">${priceMapContent}</div>`;
             } else {
                 const data = db[region] && db[region][sub] && db[region][sub][proj] ? db[region][sub][proj] : {};
                 // Check if it's facilities (handle both Chinese and English labels)
