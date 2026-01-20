@@ -385,7 +385,7 @@ const db = {
                 <table>
                     <thead><tr><th style='width:25%'>楼盘名称</th><th style='width:35%'>价格/户型</th><th>核心卖点</th></tr></thead>
                     <tbody>
-                        <tr><td><strong>观山海 (前海)</strong></td><td>95平3房 700万<br>110平4房 820万</td><td>低容积率2.66、得房率95%、前海南稀缺</td></tr>
+                        <tr><td><strong>观山海 (前海)</strong></td><td>95平米三房两卫819—850万，113平米四房两卫863—960万，115平米四房两卫873—960万，138平米四房两卫1176—1390万</td><td>低容积率2.66、得房率95%、前海南稀缺</td></tr>
                         <tr><td><strong>荔源雅苑</strong></td><td>118㎡四房 800万</td><td>前海路、现楼</td></tr>
                         <tr><td><strong>翰熙典居 (粤海)</strong></td><td>105㎡ 894万起<br>140㎡ 1457万起</td><td>顶配地段(粤海)、紧邻深大/腾讯</td></tr>
                         <tr><td><strong>绿景白石洲 (华侨城)</strong></td><td>110㎡ 1050万起<br>187㎡ 2600万</td><td>航母级旧改、顶级地段</td></tr>
