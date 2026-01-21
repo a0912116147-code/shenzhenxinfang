@@ -10,6 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#2e86c1">
 
+    <!-- PDF导出库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         /* === 基础样式 === */
         :root {
@@ -1103,6 +1106,158 @@
                 font-size: 13px;
             }
         }
+
+        /* === 下载选项弹窗样式 === */
+        .download-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .download-modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .download-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .download-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .download-options {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .download-option-btn {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .download-option-btn:hover {
+            background: #e3f2fd;
+            border-color: var(--primary-color);
+        }
+
+        .download-option-btn:active {
+            transform: scale(0.98);
+        }
+
+        .download-icon {
+            font-size: 32px;
+            margin-right: 15px;
+        }
+
+        .download-option-text strong {
+            display: block;
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .download-option-text small {
+            display: block;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .download-tip {
+            padding: 15px 20px;
+            background: #fff3cd;
+            border-top: 1px solid #f0f0f0;
+            font-size: 13px;
+            color: #856404;
+            border-radius: 0 0 20px 20px;
+        }
+
+        /* === iOS浏览器引导样式 === */
+        .ios-guide {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10001;
+            padding: 20px;
+        }
+
+        .ios-guide-content {
+            color: white;
+            text-align: center;
+            padding-top: 60px;
+        }
+
+        .ios-guide-arrow {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(20px); }
+        }
+
+        .ios-guide-content p {
+            font-size: 18px;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        .ios-guide-content strong {
+            color: #ffd700;
+            font-size: 20px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .download-modal-content {
+                max-width: 90%;
+            }
+            .download-option-btn {
+                padding: 12px;
+            }
+        }
     </style>
 </head>
 
@@ -1129,7 +1284,53 @@
             </div>
 
             <div class="cart-footer">
-                <button class="btn-primary" onclick="generateReport()">⬇️ 下载专属页面 (HTML)</button>
+                <button class="btn-primary" onclick="showDownloadOptions()">⬇️ 导出专属报告</button>
+            </div>
+
+            <!-- 下载选项弹窗 -->
+            <div class="download-modal" id="downloadModal" style="display:none;">
+                <div class="download-modal-content">
+                    <div class="download-modal-header">
+                        <h3>📄 选择导出格式</h3>
+                        <span onclick="closeDownloadModal()" style="cursor:pointer;font-size:24px;">&times;</span>
+                    </div>
+                    <div class="download-options">
+                        <button class="download-option-btn" onclick="generatePDF()">
+                            <span class="download-icon">📋</span>
+                            <div class="download-option-text">
+                                <strong>PDF格式 (推荐)</strong>
+                                <small>所有设备都能打开，方便分享</small>
+                            </div>
+                        </button>
+                        <button class="download-option-btn" onclick="copyPageLink()">
+                            <span class="download-icon">🔗</span>
+                            <div class="download-option-text">
+                                <strong>复制链接分享</strong>
+                                <small>复制当前页面链接发送给客户</small>
+                            </div>
+                        </button>
+                        <button class="download-option-btn" onclick="generateReport()">
+                            <span class="download-icon">🌐</span>
+                            <div class="download-option-text">
+                                <strong>HTML网页</strong>
+                                <small>可在浏览器中打开</small>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="download-tip">
+                        💡 提示：PDF格式最适合发送给客户，微信中可直接打开预览
+                    </div>
+                </div>
+            </div>
+
+            <!-- iOS浏览器引导遮罩 -->
+            <div class="ios-guide" id="iosGuide" style="display:none;">
+                <div class="ios-guide-content">
+                    <div class="ios-guide-arrow">↗</div>
+                    <p>点击右上角 <strong>"..."</strong></p>
+                    <p>选择 <strong>"在浏览器中打开"</strong></p>
+                    <p style="font-size:14px;color:#999;margin-top:15px;">这样可以选择Safari或其他浏览器</p>
+                </div>
             </div>
 
         </div>
@@ -1476,6 +1677,199 @@
 
         function closeCart() {
             document.getElementById('cartModal').classList.remove('active');
+        }
+
+        // === 下载选项相关函数 ===
+        function showDownloadOptions() {
+            if (reportCart.size === 0) return alert(t('addProjectsFirst'));
+            document.getElementById('downloadModal').style.display = 'flex';
+        }
+
+        function closeDownloadModal() {
+            document.getElementById('downloadModal').style.display = 'none';
+        }
+
+        // 生成PDF报告
+        function generatePDF() {
+            if (reportCart.size === 0) return alert(t('addProjectsFirst'));
+            closeDownloadModal();
+
+            // 显示加载提示
+            const loadingMsg = document.createElement('div');
+            loadingMsg.id = 'pdfLoading';
+            loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:20px 40px;border-radius:10px;z-index:10002;font-size:16px;';
+            loadingMsg.textContent = '正在生成PDF，请稍候...';
+            document.body.appendChild(loadingMsg);
+
+            // 生成HTML内容
+            let reportContent = '';
+            const today = new Date().toLocaleDateString();
+
+            reportCart.forEach(key => {
+                const [region, sub, proj] = key.split('|');
+                const projData = db[region][sub][proj] || {};
+
+                const peitao = projData.peitao && projData.peitao.trim() !== '' ? projData.peitao : `<p style="color:#999;">${t('noFacilitiesInfo')}</p>`;
+                const huxing = projData.huxing && projData.huxing.trim() !== '' ? projData.huxing : `<p style="color:#999;">${t('noUnitInfo')}</p>`;
+
+                reportContent += `
+        <div class="proj-group">
+            <div class="btn-l1">
+                <span class="title">🏢 ${proj}</span>
+            </div>
+            <div class="content-l1">
+                <div class="category-box">
+                    <div class="btn-l2">
+                        <span>📍 ${t('projectFacilities')}</span>
+                    </div>
+                    <div class="content-l2">
+                        <div class="article-body">${peitao}</div>
+                    </div>
+                </div>
+                <div class="category-box">
+                    <div class="btn-l2">
+                        <span>🏠 ${t('unitIntroduction')}</span>
+                    </div>
+                    <div class="content-l2">
+                        <div class="article-body">${huxing}</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+            });
+
+            const rTitle = t('reportTitle');
+            const rAdvisor = t('exclusiveAdvisor');
+            const rPhone = t('phoneWechat');
+            const rDiscount = t('discountNote');
+            const rDate = t('generatedDate');
+
+            const htmlContent = `
+                <div style="font-family: 'Microsoft YaHei', sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background: #f4f6f9;">
+                    <div style="background: #fff; padding: 30px 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; border-top: 5px solid #2e86c1;">
+                        <h1 style="color: #1a5276; margin: 0 0 15px; font-size: 24px;">${rTitle}</h1>
+                        <div style="background: #f0f7fd; padding: 15px 20px; border-radius: 30px; display: inline-block;">
+                            <strong>👤 ${rAdvisor}</strong><br>
+                            📞 ${rPhone}
+                            <span style="color: #e74c3c; font-weight: bold; font-size: 13px; display: block; margin-top: 5px;">${rDiscount}</span>
+                        </div>
+                        <p style="color:#999; font-size:12px; margin-top:15px;">${rDate}${today}</p>
+                    </div>
+                    ${reportContent}
+                    <div style="text-align:center; color:#bdc3c7; font-size:12px; padding: 30px 20px;">
+                        © 贝壳找房 - ${rAdvisor} 专属定制报告
+                    </div>
+                </div>`;
+
+            // 创建临时容器
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.innerHTML = htmlContent;
+            document.body.appendChild(container);
+
+            // PDF配置
+            const opt = {
+                margin: 10,
+                filename: (currentLanguage === 'zh-CN' ? '专属置业报告' : 'Property_Report') + '_' + new Date().getTime() + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // 生成并下载PDF
+            html2pdf().set(opt).from(container).save().then(() => {
+                document.body.removeChild(container);
+                const loading = document.getElementById('pdfLoading');
+                if (loading) loading.remove();
+                alert('PDF已生成！可以直接发送给客户查看');
+            }).catch(err => {
+                document.body.removeChild(container);
+                const loading = document.getElementById('pdfLoading');
+                if (loading) loading.remove();
+                console.error('PDF生成失败:', err);
+                alert('PDF生成失败，请尝试使用HTML格式');
+            });
+        }
+
+        // 复制页面链接
+        function copyPageLink() {
+            closeDownloadModal();
+            const pageUrl = window.location.href;
+
+            // 使用现代的Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(pageUrl).then(() => {
+                    // 显示成功提示
+                    showToast('✅ 链接已复制！可以发送给客户');
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    fallbackCopy(pageUrl);
+                });
+            } else {
+                fallbackCopy(pageUrl);
+            }
+        }
+
+        // 备用复制方法（兼容旧浏览器）
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            try {
+                document.execCommand('copy');
+                showToast('✅ 链接已复制！可以发送给客户');
+            } catch (err) {
+                console.error('复制失败:', err);
+                showToast('❌ 复制失败，请手动复制地址栏链接');
+            }
+
+            document.body.removeChild(textarea);
+        }
+
+        // 显示提示消息
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:15px 25px;border-radius:10px;z-index:10003;font-size:14px;animation:fadeIn 0.3s;';
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+
+        // === iOS浏览器引导 ===
+        // 检测是否在微信或应用内
+        function isInApp() {
+            const ua = navigator.userAgent.toLowerCase();
+            return ua.indexOf('micromessenger') !== -1 || ua.indexOf('qq') !== -1;
+        }
+
+        // 显示iOS浏览器引导
+        function showiOSGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS && isInApp()) {
+                // 添加一个提示按钮到页面顶部
+                const guideBtn = document.createElement('div');
+                guideBtn.id = 'iosGuideBtn';
+                guideBtn.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff9800;color:white;text-align:center;padding:10px;font-size:14px;z-index:9999;cursor:pointer;';
+                guideBtn.innerHTML = '📱 建议使用Safari浏览器获得最佳体验，点击查看';
+                guideBtn.onclick = function() {
+                    document.getElementById('iosGuide').style.display = 'block';
+                };
+                document.body.appendChild(guideBtn);
+
+                // 点击遮罩关闭
+                document.getElementById('iosGuide').onclick = function() {
+                    this.style.display = 'none';
+                };
+            }
         }
 
         // --- 核心优化：带水印、宽绰排版、三层折叠报告生成器 ---
@@ -1880,6 +2274,7 @@
         }
 
         initMenu();
+        showiOSGuide();
     </script>
 </body>
 
