@@ -10,6 +10,48 @@
     <meta name="theme-color" content="#2e86c1">
     
     <style>
+        /* === 加载提示样式 === */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            color: white;
+            font-family: "Microsoft YaHei", -apple-system, sans-serif;
+        }
+        #loadingScreen h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        #loadingScreen p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 10px 0;
+        }
+        #loadingScreen .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 30px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loadingScreen.hidden {
+            display: none;
+        }
         /* === 基础样式 === */
         :root { --primary-color: #2e86c1; --sidebar-bg: #f8f9fa; --border-color: #e0e0e0; --hover-bg: #e9ecef; --active-bg: #e8f4fc; }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -147,6 +189,14 @@
     </style>
 </head>
 <body>
+    <!-- 加载提示 -->
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <h1>🏢 深圳楼盘全集</h1>
+        <p>正在加载楼盘数据...</p>
+        <p style="font-size:14px;opacity:0.7;">首次加载可能需要几秒钟，请稍候</p>
+    </div>
+
     <div class="watermark-container" id="watermark"></div>
 
     <div class="floating-ball" onclick="openCart()">
@@ -1016,6 +1066,18 @@ function fallbackCopy(text) {
     }
 
     initMenu();
+
+    // 隐藏加载提示
+    setTimeout(() => {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if(loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }
+    }, 500);
+
     checkSharedProjects(); // 检查是否有分享链接参数
 </script>
 </body>
