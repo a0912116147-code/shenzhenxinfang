@@ -1295,30 +1295,23 @@
                         <span onclick="closeDownloadModal()" style="cursor:pointer;font-size:24px;">&times;</span>
                     </div>
                     <div class="download-options">
+                        <button class="download-option-btn" onclick="generateShareLink()">
+                            <span class="download-icon">🔗</span>
+                            <div class="download-option-text">
+                                <strong>生成分享链接 (推荐)</strong>
+                                <small>客户只看到选中的项目，专业且安全</small>
+                            </div>
+                        </button>
                         <button class="download-option-btn" onclick="generatePDF()">
                             <span class="download-icon">📋</span>
                             <div class="download-option-text">
-                                <strong>PDF格式 (推荐)</strong>
-                                <small>所有设备都能打开，方便分享</small>
-                            </div>
-                        </button>
-                        <button class="download-option-btn" onclick="copyPageLink()">
-                            <span class="download-icon">🔗</span>
-                            <div class="download-option-text">
-                                <strong>复制链接分享</strong>
-                                <small>复制当前页面链接发送给客户</small>
-                            </div>
-                        </button>
-                        <button class="download-option-btn" onclick="generateReport()">
-                            <span class="download-icon">🌐</span>
-                            <div class="download-option-text">
-                                <strong>HTML网页</strong>
-                                <small>可在浏览器中打开</small>
+                                <strong>PDF文件</strong>
+                                <small>下载PDF文件发送给客户</small>
                             </div>
                         </button>
                     </div>
                     <div class="download-tip">
-                        💡 提示：PDF格式最适合发送给客户，微信中可直接打开预览
+                        💡 提示：分享链接最方便，客户点开直接看到你推荐的项目
                     </div>
                 </div>
             </div>
@@ -1689,6 +1682,68 @@
             document.getElementById('downloadModal').style.display = 'none';
         }
 
+        // 生成分享链接
+        function generateShareLink() {
+            if (reportCart.size === 0) return alert(t('addProjectsFirst'));
+            closeDownloadModal();
+
+            // 将选中的项目编码到URL中
+            const projects = Array.from(reportCart);
+            const encoded = btoa(encodeURIComponent(JSON.stringify(projects)));
+
+            // 生成分享链接
+            const shareUrl = window.location.origin + window.location.pathname + '?share=' + encoded;
+
+            // 复制到剪贴板
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    showToast('✅ 分享链接已复制！\n\n发送给客户后，他们只能看到你选中的项目');
+                }).catch(() => fallbackCopy(shareUrl));
+            } else {
+                fallbackCopy(shareUrl);
+            }
+        }
+
+        // 检查并加载分享的链接
+        function loadSharedProjects() {
+            const params = new URLSearchParams(window.location.search);
+            const shareData = params.get('share');
+
+            if (shareData) {
+                try {
+                    const projects = JSON.parse(decodeURIComponent(atob(shareData)));
+
+                    // 清空购物车并加载分享的项目
+                    reportCart.clear();
+                    projects.forEach(key => reportCart.add(key));
+
+                    // 隐藏侧边栏和菜单，只显示分享的内容
+                    document.getElementById('sidebar').style.display = 'none';
+                    document.querySelector('.content-wrapper').style.marginLeft = '0';
+                    document.querySelector('.menu-toggle').style.display = 'none';
+                    document.querySelector('.floating-ball').style.display = 'none';
+
+                    // 显示分享提示
+                    const shareNotice = document.createElement('div');
+                    shareNotice.id = 'shareNotice';
+                    shareNotice.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#2e86c1;color:white;padding:15px;text-align:center;z-index:10000;font-size:14px;';
+                    shareNotice.innerHTML = '📢 这是贝壳李金松为您精选的楼盘推荐 <span style="margin-left:20px;cursor:pointer;" onclick="document.getElementById(\'shareNotice\').remove()">×</span>';
+                    document.body.appendChild(shareNotice);
+
+                    // 自动打开第一个项目
+                    if (projects.length > 0) {
+                        const [region, sub, proj] = projects[0].split('|');
+                        loadContent(region, sub, proj, '', '');
+                    }
+
+                    showToast('✨ 已加载 ' + projects.length + ' 个精选楼盘');
+                } catch (e) {
+                    console.error('加载分享内容失败:', e);
+                    alert('分享链接无效');
+                }
+            }
+        }
+
         // 生成PDF报告
         function generatePDF() {
             if (reportCart.size === 0) return alert(t('addProjectsFirst'));
@@ -1713,27 +1768,17 @@
                 const huxing = projData.huxing && projData.huxing.trim() !== '' ? projData.huxing : `<p style="color:#999;">${t('noUnitInfo')}</p>`;
 
                 reportContent += `
-        <div class="proj-group">
-            <div class="btn-l1">
-                <span class="title">🏢 ${proj}</span>
+        <div style="background:#fff;border-radius:12px;margin-bottom:20px;overflow:hidden;">
+            <div style="padding:20px;background:#2e86c1;color:white;">
+                <h2 style="margin:0;font-size:18px;">🏢 ${proj}</h2>
+                <p style="margin:5px 0 0;font-size:12px;opacity:0.9;">${region} - ${sub}</p>
             </div>
-            <div class="content-l1">
-                <div class="category-box">
-                    <div class="btn-l2">
-                        <span>📍 ${t('projectFacilities')}</span>
-                    </div>
-                    <div class="content-l2">
-                        <div class="article-body">${peitao}</div>
-                    </div>
-                </div>
-                <div class="category-box">
-                    <div class="btn-l2">
-                        <span>🏠 ${t('unitIntroduction')}</span>
-                    </div>
-                    <div class="content-l2">
-                        <div class="article-body">${huxing}</div>
-                    </div>
-                </div>
+            <div style="padding:20px;">
+                <h3 style="color:#2e86c1;margin:0 0 10px;font-size:16px;">📍 项目配套</h3>
+                <div style="margin-bottom:20px;color:#333;line-height:1.8;">${peitao}</div>
+
+                <h3 style="color:#2e86c1;margin:0 0 10px;font-size:16px;">🏠 户型介绍</h3>
+                <div style="color:#333;line-height:1.8;">${huxing}</div>
             </div>
         </div>`;
             });
@@ -1745,70 +1790,59 @@
             const rDate = t('generatedDate');
 
             const htmlContent = `
-                <div style="font-family: 'Microsoft YaHei', sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background: #f4f6f9;">
-                    <div style="background: #fff; padding: 30px 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; border-top: 5px solid #2e86c1;">
-                        <h1 style="color: #1a5276; margin: 0 0 15px; font-size: 24px;">${rTitle}</h1>
-                        <div style="background: #f0f7fd; padding: 15px 20px; border-radius: 30px; display: inline-block;">
-                            <strong>👤 ${rAdvisor}</strong><br>
-                            📞 ${rPhone}
-                            <span style="color: #e74c3c; font-weight: bold; font-size: 13px; display: block; margin-top: 5px;">${rDiscount}</span>
+                <div style="font-family: 'Microsoft YaHei', sans-serif; max-width: 800px; margin: 0 auto; padding: 30px 20px; background: #f4f6f9;">
+                    <div style="background: #fff; padding: 40px 30px; border-radius: 20px; text-align: center; margin-bottom: 30px; border-top: 8px solid #2e86c1; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                        <h1 style="color: #1a5276; margin: 0 0 20px; font-size: 28px;">${rTitle}</h1>
+                        <div style="background: #f0f7fd; padding: 20px 30px; border-radius: 40px; display: inline-block; border: 2px solid #d0e8f9;">
+                            <div style="font-size: 16px; color: #2e86c1; margin-bottom: 8px;">👤 <strong>${rAdvisor}</strong></div>
+                            <div style="font-size: 18px; color: #333; font-weight: bold;">📞 ${rPhone}</div>
+                            <div style="color: #e74c3c; font-weight: bold; font-size: 14px; margin-top: 10px;">${rDiscount}</div>
                         </div>
-                        <p style="color:#999; font-size:12px; margin-top:15px;">${rDate}${today}</p>
+                        <p style="color:#999; font-size:13px; margin-top:20px;">${rDate}${today}</p>
                     </div>
                     ${reportContent}
-                    <div style="text-align:center; color:#bdc3c7; font-size:12px; padding: 30px 20px;">
-                        © 贝壳找房 - ${rAdvisor} 专属定制报告
+                    <div style="text-align:center; color:#bdc3c7; font-size:12px; padding: 40px 20px; background:#fff;border-radius:12px;margin-top:20px;">
+                        <p style="margin:0 0 5px;">© 贝壳找房 - ${rAdvisor} 专属定制报告</p>
+                        <p style="margin:0;">如需了解更多楼盘信息，欢迎随时联系</p>
                     </div>
                 </div>`;
 
-            // 创建临时容器
+            // 创建可见的临时容器（用于渲染）
             const container = document.createElement('div');
-            container.style.position = 'absolute';
-            container.style.left = '-9999px';
+            container.id = 'pdfContainer';
+            container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:99999;overflow:auto;padding:20px;';
             container.innerHTML = htmlContent;
             document.body.appendChild(container);
 
             // PDF配置
             const opt = {
-                margin: 10,
+                margin: [15, 15, 15, 15],
                 filename: (currentLanguage === 'zh-CN' ? '专属置业报告' : 'Property_Report') + '_' + new Date().getTime() + '.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    letterRendering: true
+                },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             // 生成并下载PDF
-            html2pdf().set(opt).from(container).save().then(() => {
-                document.body.removeChild(container);
-                const loading = document.getElementById('pdfLoading');
-                if (loading) loading.remove();
-                alert('PDF已生成！可以直接发送给客户查看');
-            }).catch(err => {
-                document.body.removeChild(container);
-                const loading = document.getElementById('pdfLoading');
-                if (loading) loading.remove();
-                console.error('PDF生成失败:', err);
-                alert('PDF生成失败，请尝试使用HTML格式');
-            });
-        }
-
-        // 复制页面链接
-        function copyPageLink() {
-            closeDownloadModal();
-            const pageUrl = window.location.href;
-
-            // 使用现代的Clipboard API
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(pageUrl).then(() => {
-                    // 显示成功提示
-                    showToast('✅ 链接已复制！可以发送给客户');
+            setTimeout(() => {
+                html2pdf().set(opt).from(container).save().then(() => {
+                    document.body.removeChild(container);
+                    const loading = document.getElementById('pdfLoading');
+                    if (loading) loading.remove();
+                    showToast('✅ PDF已生成！可以直接发送给客户查看');
                 }).catch(err => {
-                    console.error('复制失败:', err);
-                    fallbackCopy(pageUrl);
+                    document.body.removeChild(container);
+                    const loading = document.getElementById('pdfLoading');
+                    if (loading) loading.remove();
+                    console.error('PDF生成失败:', err);
+                    alert('PDF生成失败，请重试或使用分享链接');
                 });
-            } else {
-                fallbackCopy(pageUrl);
-            }
+            }, 500); // 等待渲染完成
         }
 
         // 备用复制方法（兼容旧浏览器）
@@ -1822,10 +1856,10 @@
 
             try {
                 document.execCommand('copy');
-                showToast('✅ 链接已复制！可以发送给客户');
+                showToast('✅ 分享链接已复制！\n\n发送给客户后，他们只能看到你选中的项目');
             } catch (err) {
                 console.error('复制失败:', err);
-                showToast('❌ 复制失败，请手动复制地址栏链接');
+                showToast('❌ 复制失败，请重试');
             }
 
             document.body.removeChild(textarea);
@@ -1835,13 +1869,13 @@
         function showToast(message) {
             const toast = document.createElement('div');
             toast.textContent = message;
-            toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:15px 25px;border-radius:10px;z-index:10003;font-size:14px;animation:fadeIn 0.3s;';
+            toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:15px 25px;border-radius:10px;z-index:10003;font-size:14px;max-width:80%;text-align:center;white-space:pre-line;animation:fadeIn 0.3s;';
             document.body.appendChild(toast);
 
             setTimeout(() => {
                 toast.style.animation = 'fadeOut 0.3s';
                 setTimeout(() => document.body.removeChild(toast), 300);
-            }, 2000);
+            }, 3000);
         }
 
         // === iOS浏览器引导 ===
@@ -2275,6 +2309,7 @@
 
         initMenu();
         showiOSGuide();
+        loadSharedProjects(); // 加载分享链接
     </script>
 </body>
 
