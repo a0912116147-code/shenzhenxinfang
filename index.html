@@ -196,6 +196,10 @@
 <script src="js/data_core.js"></script>
 <script src="js/data_baoshan.js"></script>    <script src="js/data_shajing.js"></script>    <script src="js/data_futian.js"></script>     <script src="js/data_longhua.js"></script>    <script src="js/data_guangming.js"></script>  
 <script>
+    // 项目ID映射表（用于分享链接）
+    const projectKeyToId = {};  // 项目key -> ID
+    const idToProjectKey = {};  // ID -> 项目key
+
     // --- 语言配置系统 ---
     const translations = {
         'zh-CN': {
@@ -594,19 +598,36 @@ function generateShareLink() {
         return;
     }
 
-    // 获取选中的项目列表
-    const projects = Array.from(reportCart);
-    // 使用简单的分隔符：区域|子区域|项目名，用逗号分隔多个项目
-    const projectsParam = projects.join(',');
+    // 获取选中的项目列表，转换为ID索引
+    const projectIds = [];
+    reportCart.forEach(key => {
+        const id = projectKeyToId[key];
+        if(id !== undefined) {
+            projectIds.push(id);
+        }
+    });
+
+    if(projectIds.length === 0) {
+        alert('生成链接失败，请刷新页面重试');
+        return;
+    }
+
+    // 使用ID而不是中文名，避免URL编码问题
+    const projectsParam = projectIds.join(',');
 
     // 生成带参数的链接
     const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = baseUrl + '?projects=' + encodeURIComponent(projectsParam);
+    const shareUrl = baseUrl + '?p=' + projectsParam;
 
     // 复制到剪贴板
+    const message = '✅ 链接已复制！\n\n' +
+                   '💡 发送给客户时，请加上这句话：\n' +
+                   '"请长按链接复制，在浏览器中打开"\n\n' +
+                   '客户只能看到你选中的 ' + projectIds.length + ' 个楼盘';
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(shareUrl).then(() => {
-            alert('✅ 客户专用链接已复制！\n\n发送给客户后，他们只能看到你选中的 ' + projects.length + ' 个楼盘');
+            alert(message);
             closeCart();
         }).catch(err => {
             console.error('复制失败:', err);
@@ -620,21 +641,32 @@ function generateShareLink() {
 // 检查URL参数并加载特定项目
 function checkSharedProjects() {
     const params = new URLSearchParams(window.location.search);
-    const projectsParam = params.get('projects');
+    const projectsParam = params.get('p'); // 改用简短参数名
 
     if(projectsParam) {
         try {
-            // 解码项目列表
-            const projects = decodeURIComponent(projectsParam).split(',');
+            // 解析ID列表
+            const projectIds = projectsParam.split(',').map(id => parseInt(id));
+            const projects = [];
+
+            // 将ID转换回项目key
+            projectIds.forEach(id => {
+                const key = idToProjectKey[id];
+                if(key) {
+                    projects.push(key);
+                }
+            });
 
             if(projects.length > 0) {
                 // 启用筛选模式
                 enableFilteredMode(projects);
+                return true; // 表示是分享链接模式
             }
         } catch(e) {
             console.error('解析项目参数失败:', e);
         }
     }
+    return false;
 }
 
 // 启用筛选模式 - 只显示选中的项目
@@ -655,11 +687,19 @@ function enableFilteredMode(projects) {
     const notice = document.createElement('div');
     notice.id = 'shareNotice';
     notice.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#2e86c1;color:white;padding:12px;text-align:center;z-index:10000;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
-    notice.innerHTML = '📢 贝壳李金松为您精选推荐 ' + projects.length + ' 个楼盘 <span style="float:right;cursor:pointer;font-size:20px;margin-right:10px;" onclick="document.getElementById(\'shareNotice\').remove()">&times;</span>';
+    notice.innerHTML = "📢 贝壳李金松为您精选推荐 <strong>" + projects.length + "个楼盘</strong>";
     document.body.appendChild(notice);
 
     // 显示所有选中的项目
     const contentArea = document.getElementById('contentArea');
+    // 添加微信提示（如果是在微信中打开）
+    const isWechat = /micromessenger/i.test(navigator.userAgent);
+    if(isWechat) {
+        const wechatNotice = document.createElement("div");
+        wechatNotice.style.cssText = "position:fixed;top:55px;left:0;right:0;background:#ff9800;color:white;padding:15px;text-align:center;z-index:9999;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15);line-height:1.6;";
+        wechatNotice.innerHTML = "💡 请点击右上角 <strong>...</strong> 选择<strong>\"在浏览器中打开\"</strong>以查看完整内容";
+        document.body.appendChild(wechatNotice);
+    }
     contentArea.innerHTML = '<h2 style="color:#2e86c1;margin-bottom:20px;">📋 为您精选的楼盘推荐</h2>';
 
     projects.forEach((projectKey, index) => {
@@ -894,6 +934,21 @@ function fallbackCopy(text) {
         if (typeof db === 'undefined' || Object.keys(db).length === 0) {
             document.getElementById('contentArea').innerHTML = `<div style="color:red; text-align:center; margin-top:50px;">${t('needDataFile')}</div>`;
             return;
+        }
+
+        // 构建项目ID映射表（用于分享链接）
+        if(!projectKeyToId || Object.keys(projectKeyToId).length === 0) {
+            let projectId = 0;
+            for(const region in db) {
+                for(const sub in db[region]) {
+                    for(const proj in db[region][sub]) {
+                        const key = region + '|' + sub + '|' + proj;
+                        projectKeyToId[key] = projectId;
+                        idToProjectKey[projectId] = key;
+                        projectId++;
+                    }
+                }
+            }
         }
 
         const navTree = document.getElementById('navTree');
