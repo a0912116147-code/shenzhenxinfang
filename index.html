@@ -193,8 +193,9 @@
     <div id="loadingScreen">
         <div class="spinner"></div>
         <h1>🏢 深圳楼盘全集</h1>
-        <p>正在加载楼盘数据...</p>
-        <p style="font-size:14px;opacity:0.7;">首次加载可能需要几秒钟，请稍候</p>
+        <p>正在加载楼盘数据（约2.5MB）...</p>
+        <p style="font-size:14px;opacity:0.9;margin-top:10px;">⏱️ 首次加载需要<strong>10-20秒</strong>，请耐心等待</p>
+        <p style="font-size:13px;opacity:0.7;">加载完成后即可流畅浏览</p>
     </div>
 
     <div class="watermark-container" id="watermark"></div>
@@ -671,9 +672,13 @@ function generateShareLink() {
 
     // 复制到剪贴板
     const message = '✅ 链接已复制！\n\n' +
-                   '💡 发送给客户时，请加上这句话：\n' +
-                   '"请长按链接复制，在浏览器中打开"\n\n' +
-                   '客户只能看到你选中的 ' + projectIds.length + ' 个楼盘';
+                   '📱 发送给客户时，请加上这段话：\n\n' +
+                   '━━━━━━━━━━━━━━━━\n' +
+                   '【为您精选的楼盘推荐】\n\n' +
+                   '请��按链接复制，在浏览器中打开\n' +
+                   '⏱️ 首次加载需要10-20秒，请耐心等待\n' +
+                   '━━━━━━━━━━━━━━━━\n\n' +
+                   '客户只能看到您选中的 ' + projectIds.length + ' 个楼盘';
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(shareUrl).then(() => {
