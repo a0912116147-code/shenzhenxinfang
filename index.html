@@ -164,7 +164,7 @@
                 <p style="text-align:center; color:#999;">${t('cartEmptyShort')}</p>
             </div>
             <div class="cart-footer">
-                <button class="btn-primary" onclick="copyPageLink()">🔗 复制���接分享给客户</button>
+                <button class="btn-primary" onclick="generateShareLink()">🔗 复制���接分享给客户</button>
                 <button class="btn-primary" onclick="generateReport()" style="margin-top:10px;">⬇️ 下载HTML文件</button>
             </div>
         </div>
@@ -587,7 +587,121 @@ function generateReport() {
     URL.revokeObjectURL(url);
 }
 
-// 复制页面链接
+// 生成客户专用分享链接
+function generateShareLink() {
+    if(reportCart.size === 0) {
+        alert('请先添加楼盘到报告清单！');
+        return;
+    }
+
+    // 获取选中的项目列表
+    const projects = Array.from(reportCart);
+    // 使用简单的分隔符：区域|子区域|项目名，用逗号分隔多个项目
+    const projectsParam = projects.join(',');
+
+    // 生成带参数的链接
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = baseUrl + '?projects=' + encodeURIComponent(projectsParam);
+
+    // 复制到剪贴板
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('✅ 客户专用链接已复制！\n\n发送给客户后，他们只能看到你选中的 ' + projects.length + ' 个楼盘');
+            closeCart();
+        }).catch(err => {
+            console.error('复制失败:', err);
+            fallbackCopy(shareUrl);
+        });
+    } else {
+        fallbackCopy(shareUrl);
+    }
+}
+
+// 检查URL参数并加载特定项目
+function checkSharedProjects() {
+    const params = new URLSearchParams(window.location.search);
+    const projectsParam = params.get('projects');
+
+    if(projectsParam) {
+        try {
+            // 解码项目列表
+            const projects = decodeURIComponent(projectsParam).split(',');
+
+            if(projects.length > 0) {
+                // 启用筛选模式
+                enableFilteredMode(projects);
+            }
+        } catch(e) {
+            console.error('解析项目参数失败:', e);
+        }
+    }
+}
+
+// 启用筛选模式 - 只显示选中的项目
+function enableFilteredMode(projects) {
+    // 隐藏侧边栏和菜单
+    document.getElementById('sidebar').style.display = 'none';
+    document.querySelector('.menu-toggle').style.display = 'none';
+    document.querySelector('.floating-ball').style.display = 'none';
+
+    // 调整内容区域宽度
+    const contentWrapper = document.querySelector('.content-wrapper');
+    if(contentWrapper) {
+        contentWrapper.style.maxWidth = '100%';
+        contentWrapper.style.margin = '0 auto';
+    }
+
+    // 添加顶部提示
+    const notice = document.createElement('div');
+    notice.id = 'shareNotice';
+    notice.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#2e86c1;color:white;padding:12px;text-align:center;z-index:10000;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+    notice.innerHTML = '📢 贝壳李金松为您精选推荐 ' + projects.length + ' 个楼盘 <span style="float:right;cursor:pointer;font-size:20px;margin-right:10px;" onclick="document.getElementById(\'shareNotice\').remove()">&times;</span>';
+    document.body.appendChild(notice);
+
+    // 显示所有选中的项目
+    const contentArea = document.getElementById('contentArea');
+    contentArea.innerHTML = '<h2 style="color:#2e86c1;margin-bottom:20px;">📋 为您精选的楼盘推荐</h2>';
+
+    projects.forEach((projectKey, index) => {
+        const [region, sub, proj] = projectKey.split('|');
+        if(db[region] && db[region][sub] && db[region][sub][proj]) {
+            const projData = db[region][sub][proj];
+
+            // 创建项目卡片
+            const card = document.createElement('div');
+            card.style.cssText = 'background:white;border-radius:12px;padding:25px;margin-bottom:25px;box-shadow:0 2px 12px rgba(0,0,0,0.08);';
+
+            card.innerHTML = `
+                <div style="border-bottom:2px solid #2e86c1;padding-bottom:15px;margin-bottom:20px;">
+                    <h3 style="color:#2e86c1;font-size:22px;margin:0;">🏢 ${proj}</h3>
+                    <p style="color:#666;margin:8px 0 0;font-size:14px;">📍 ${region} - ${sub}</p>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <h4 style="color:#2e86c1;font-size:16px;margin:0 0 12px;">📍 项目配套</h4>
+                    <div style="line-height:1.8;color:#333;">${projData.peitao || '<p style="color:#999;">暂无信息</p>'}</div>
+                </div>
+                <div>
+                    <h4 style="color:#2e86c1;font-size:16px;margin:0 0 12px;">🏠 户型介绍</h4>
+                    <div style="line-height:1.8;color:#333;">${projData.huxing || '<p style="color:#999;">暂无信息</p>'}</div>
+                </div>
+            `;
+
+            contentArea.appendChild(card);
+        }
+    });
+
+    // 添加底部联系信息
+    const footer = document.createElement('div');
+    footer.style.cssText = 'text-align:center;padding:40px 20px;background:#f8f9fa;border-radius:12px;margin-top:30px;';
+    footer.innerHTML = `
+        <p style="color:#2e86c1;font-size:18px;font-weight:bold;margin:0 0 10px;">👤 贝壳李金松</p>
+        <p style="color:#333;font-size:16px;margin:0 0 8px;">📞 电话/微信：17277898972</p>
+        <p style="color:#e74c3c;font-size:14px;margin:0;">💡 预约看房领专属折扣（总价的一个点起）</p>
+    `;
+    contentArea.appendChild(footer);
+}
+
+// 复制页面链接（保留原功能）
 function copyPageLink() {
     const pageUrl = window.location.href;
 
@@ -847,6 +961,7 @@ function fallbackCopy(text) {
     }
 
     initMenu();
+    checkSharedProjects(); // 检查是否有分享链接参数
 </script>
 </body>
 </html>
