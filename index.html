@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -187,6 +187,8 @@
             .watermark-text { font-size: 13px; margin: 40px 10px; width: 280px; }
         }
     </style>
+    <!-- html2pdf 库用于生成 PDF 报告 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
     <!-- 加载提示 -->
@@ -216,7 +218,7 @@
             </div>
             <div class="cart-footer">
                 <button class="btn-primary" onclick="generateShareLink()">🔗 复制���接分享给客户</button>
-                <button class="btn-primary" onclick="generateReport()" style="margin-top:10px;">⬇️ 下载HTML文件</button>
+                <button class="btn-primary" onclick="generatePDFReport()" style="margin-top:10px;">⬇️ 下载PDF报告</button>
             </div>
         </div>
     </div>
@@ -640,6 +642,159 @@ function generateReport() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+// === PDF 报告生成函数 ===
+function generatePDFReport() {
+    if(reportCart.size === 0) return alert(t('addProjectsFirst'));
+
+    // 收集楼盘数据
+    const projects = [];
+    reportCart.forEach(key => {
+        const [region, sub, proj] = key.split('|');
+        projects.push({ region, sub, proj, data: db[region][sub][proj] || {} });
+    });
+
+    // 获取标题和联系信息
+    const rTitle = t('reportTitle');
+    const rAdvisor = t('exclusiveAdvisor');
+    const rPhone = t('phoneWechat');
+    const rDiscount = t('discountNote');
+    const today = new Date().toLocaleDateString();
+
+    // ===== 第 1 页：对比表 =====
+    let comparTableHTML = `
+    <div style="page-break-after: always; padding: 40px; background: #fff; font-family: 'Microsoft YaHei', sans-serif;">
+        <h1 style="text-align: center; color: #1a5276; margin-bottom: 30px; font-size: 28px;">🏢 ${rTitle}</h1>
+        
+        <div style="text-align: center; margin-bottom: 40px;">
+            <div style="background: #f0f7fd; padding: 20px; border-radius: 10px; display: inline-block;">
+                <strong style="color: #1a5276; font-size: 16px;">${rAdvisor}</strong><br>
+                <span style="color: #666; font-size: 14px;">📞 ${rPhone}</span><br>
+                <span style="color: #e74c3c; font-weight: bold; font-size: 13px; margin-top: 8px; display: block;">${rDiscount}</span>
+            </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 30px 0;">
+            <thead>
+                <tr style="background: #1a5276; color: white;">
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; width: 35%;">楼盘名称</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; width: 25%;">区域</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; width: 40%;">总价范围</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    // 生成对比表数据
+    projects.forEach((proj, idx) => {
+        const projData = proj.data;
+        const priceInfo = projData.peitao 
+            ? (projData.peitao.match(/\d+[万千百]/g) || ['暂无']).join(' - ')
+            : '暂无';
+        
+        const bgColor = idx % 2 === 0 ? '#fff' : '#f9f9f9';
+        comparTableHTML += `
+                <tr style="background: ${bgColor};">
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: 500;">${proj.proj}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">${proj.region} - ${proj.sub}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; color: #e74c3c; font-weight: bold;">${priceInfo}</td>
+                </tr>`;
+    });
+
+    comparTableHTML += `
+            </tbody>
+        </table>
+
+        <p style="text-align: center; color: #999; font-size: 12px; margin-top: 40px;">
+            📅 生成日期：${today}
+        </p>
+    </div>`;
+
+    // ===== 后续页：楼盘详情 =====
+    let detailsHTML = '';
+    projects.forEach((proj) => {
+        const projData = proj.data;
+        const peitao = projData.peitao && projData.peitao.trim() !== '' 
+            ? projData.peitao 
+            : `<p style="color: #999;">暂无配套信息</p>`;
+        const huxing = projData.huxing && projData.huxing.trim() !== '' 
+            ? projData.huxing 
+            : `<p style="color: #999;">暂无户型信息</p>`;
+
+        detailsHTML += `
+        <div style="page-break-after: always; padding: 40px; background: #fff;">
+            <div style="border-bottom: 3px solid #1a5276; padding-bottom: 15px; margin-bottom: 30px;">
+                <h2 style="color: #1a5276; margin: 0; font-size: 24px;">🏠 ${proj.proj}</h2>
+                <p style="color: #999; margin: 8px 0 0 0; font-size: 13px;">${proj.region} > ${proj.sub}</p>
+            </div>
+
+            <div style="margin-bottom: 40px;">
+                <h3 style="color: #2c3e50; font-size: 18px; margin-bottom: 15px; border-left: 4px solid #1a5276; padding-left: 12px;">📍 项目配套</h3>
+                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; line-height: 1.8; color: #333; font-size: 14px;">
+                    ${peitao}
+                </div>
+            </div>
+
+            <div>
+                <h3 style="color: #2c3e50; font-size: 18px; margin-bottom: 15px; border-left: 4px solid #1a5276; padding-left: 12px;">🏢 户型介绍</h3>
+                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; line-height: 1.8; color: #333; font-size: 14px;">
+                    ${huxing}
+                </div>
+            </div>
+        </div>`;
+    });
+
+    // ===== 最后一页：销售卡片 =====
+    let contactPageHTML = `
+    <div style="padding: 40px; background: #fff; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100%; text-align: center;">
+        <div style="background: linear-gradient(135deg, #1a5276, #2e86c1); color: white; padding: 50px 40px; border-radius: 15px; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <h2 style="margin: 0 0 20px 0; font-size: 24px; font-weight: bold;">👥 专属顾问</h2>
+            <div style="font-size: 20px; font-weight: bold; margin-bottom: 15px;">${rAdvisor}</div>
+            <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-size: 16px; margin-bottom: 10px;">📱 ${rPhone}</div>
+                <div style="font-size: 12px; color: #fff; opacity: 0.9;">长按或扫描客服二维码</div>
+            </div>
+            <div style="background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+                <div style="color: #1a5276; font-size: 13px;">💬 微信二维码（待添加）</div>
+            </div>
+            <div style="font-size: 12px; color: #fff; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 15px; margin-top: 15px;">
+                ${rDiscount}
+            </div>
+        </div>
+        <p style="margin-top: 40px; color: #999; font-size: 12px;">
+            © 贝壳找房 - ${rAdvisor} 专属定制报告
+        </p>
+    </div>`;
+
+    // ===== 合并所有 HTML =====
+    const fullHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${rTitle}</title>
+</head>
+<body style="margin: 0; padding: 0; background: #f5f5f5;">
+    ${comparTableHTML}
+    ${detailsHTML}
+    ${contactPageHTML}
+</body>
+</html>`;
+
+    // ===== 使用 html2pdf 生成 PDF =====
+    const element = document.createElement('div');
+    element.innerHTML = fullHTML;
+
+    const opt = {
+        margin: 0,
+        filename: `${rTitle}_${today}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save();
+    closeCart();
 }
 
 // 生成客户专用分享链接
