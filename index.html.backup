@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>深圳楼盘全集 (贝壳李金松专属版)</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2e86c1">
+
+    <!-- PDF导出库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* === 基础样式 === */
+        :root {
+            --primary-color: #2e86c1;
+            --primary-light: #5dade2;
+            --primary-dark: #1a5276;
+            --accent-color: #f39c12;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --sidebar-bg: #f8f9fa;
+            --border-color: #e0e0e0;
+            --hover-bg: #e9ecef;
+            --active-bg: #e8f4fc;
+            --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            --card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", -apple-system, sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            color: #333;
+            background: #fff;
+        }
+
+        /* === 水印样式修正版 (支持换行) === */
+        .watermark-container {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            overflow: hidden;
+            opacity: 0.1;
+            /* 透明度 */
+        }
+
+        .watermark-text {
+            transform: rotate(-25deg);
+            font-size: 15px;
+            color: #000;
+            font-weight: 800;
+            margin: 60px 40px;
+            width: 320px;
+            /* 宽度给够，防止截断 */
+            text-align: center;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            /* 关键：允许\n换行 */
+        }
+
+        /* 侧边栏 & 搜索 */
+        .sidebar {
+            width: 320px;
+            background: #fff;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            height: 100%;
+            user-select: none;
+        }
+
+        .sidebar-header {
+            padding: 20px 15px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        /* 浏览统计按钮 */
+        .stats-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .stats-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 语言选择器 */
+        .language-selector {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 5px;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            color: #fff;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .lang-btn.active {
+            background: #fff;
+            color: var(--primary-color);
+            border-color: #fff;
+        }
+
+        /* 搜索框样式 */
+        .search-box {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-box:focus {
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .nav-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+
+        /* 导航节点 */
+        .nav-group {
+            display: none;
+        }
+
+        .nav-group.show {
+            display: block;
+        }
+
+        .has-arrow::after {
+            content: '▸';
+            float: right;
+            color: #999;
+            transform: rotate(0);
+            transition: transform 0.2s;
+        }
+
+        .has-arrow.open::after {
+            transform: rotate(90deg);
+        }
+
+        .level-1 {
+            padding: 16px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 1px solid #f5f5f5;
+            background: #fff;
+            color: #2c3e50;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .level-1:active {
+            background: #f8f9fa;
+        }
+
+        .level-2 {
+            padding: 12px 20px 12px 30px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 1px solid #f8f8f8;
+            background: #fafbfc;
+            color: #555;
+            transition: all 0.2s;
+        }
+
+        .level-2:active {
+            background: #f0f1f3;
+        }
+
+        .level-3 {
+            padding: 11px 20px 11px 45px;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            background: #fff;
+            color: #333;
+            border-left: 3px solid transparent;
+            border-bottom: 1px solid #fafafa;
+            transition: all 0.2s;
+        }
+
+        .level-3.open {
+            font-weight: 600;
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            background: #f8fbfe;
+        }
+
+        .level-4 {
+            padding: 10px 20px 10px 60px;
+            font-size: 13px;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            border-radius: 0;
+        }
+
+        .level-4:active {
+            background: #f0f0f0;
+        }
+
+        .level-4.active {
+            background: linear-gradient(90deg, var(--active-bg), transparent);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            scroll-behavior: smooth;
+            background: #f5f7fa;
+        }
+
+        .content-wrapper {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* 内容样式 */
+        .content-body {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .content-body p {
+            line-height: 1.7;
+            margin-bottom: 12px;
+            text-align: justify;
+            color: #333;
+            font-size: 15px;
+        }
+
+        .content-body h2 {
+            color: var(--primary-dark);
+            border-left: 4px solid var(--primary-color);
+            padding-left: 12px;
+            margin: 24px 0 16px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .content-body h3 {
+            color: var(--primary-color);
+            margin: 20px 0 12px;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        /* 面包屑导航 */
+        .breadcrumb {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        /* 页面标题 */
+        .page-header {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin: 0 0 20px;
+        }
+
+        /* 价格地图容器 */
+        .price-map-container {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            overflow-x: auto;
+        }
+
+        .price-map-container section {
+            margin-bottom: 30px;
+        }
+
+        .price-map-container section:last-child {
+            margin-bottom: 0;
+        }
+
+        .price-map-container h2 {
+            color: var(--primary-dark);
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .price-map-container h3 {
+            color: var(--primary-color);
+            font-size: 17px;
+            font-weight: 600;
+            margin: 20px 0 12px;
+        }
+
+        .price-map-container table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .price-map-container table th,
+        .price-map-container table td {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .price-map-container table th {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            font-weight: 600;
+        }
+
+        .price-map-container table td {
+            background: white;
+        }
+
+        .price-map-container tr:nth-child(even) td {
+            background: #f8f9fa;
+        }
+
+        .price-map-container tr:hover td {
+            background: #e8f4fc;
+        }
+
+        .price-map-container p {
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .price-map-container .warning,
+        .price-map-container .highlight {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        .content-body ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 16px 0;
+            font-size: 14px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 表格容器 - 用于移动端横向滚动 */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 16px -16px;
+            padding: 0 16px;
+        }
+
+        .table-container table {
+            margin: 0;
+            min-width: 100%;
+        }
+
+        th,
+        td {
+            border: none;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            font-weight: 600;
+            width: 25%;
+            color: #495057;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fafbfc;
+        }
+
+        tr:hover {
+            background-color: #f0f4f8;
+        }
+
+        td:first-child {
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #e8f4fc, #d6eaf8);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 8px rgba(46, 134, 193, 0.15);
+        }
+
+        .price-comparison,
+        .special-offer {
+            background: linear-gradient(135deg, #e8f6f3, #d5f4e6);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid var(--success-color);
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.15);
+        }
+
+        .disadvantages {
+            background: linear-gradient(135deg, #fdedec, #fadbd8);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid var(--danger-color);
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.15);
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #fef9e7, #fcf3cf);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid var(--accent-color);
+            box-shadow: 0 2px 8px rgba(243, 156, 18, 0.15);
+        }
+
+        .placeholder {
+            padding: 50px;
+            text-align: center;
+            color: #999;
+            border: 2px dashed #e0e0e0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #fafafa, #f5f5f5);
+        }
+
+        /* 搜索结果样式 */
+        .search-result-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+
+        .search-result-item:active {
+            background: #f5f7fa;
+            transform: scale(0.99);
+        }
+
+        .search-path {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+
+        .search-name {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+
+        .search-match {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* === 悬浮球 & 购物车功能 === */
+        .floating-ball {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 16px rgba(46, 134, 193, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .floating-ball:active {
+            transform: scale(0.92);
+        }
+
+        .ball-count {
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .ball-label {
+            font-size: 9px;
+            opacity: 0.95;
+        }
+
+        /* 购物车弹窗 */
+        .cart-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .cart-modal.active {
+            display: flex;
+        }
+
+        /* 统计弹窗 */
+        .stats-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .stats-modal.active {
+            display: flex;
+        }
+
+        .cart-content {
+            background: #fff;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .cart-header {
+            padding: 24px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .cart-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .cart-item:active {
+            background: #f8f9fa;
+        }
+
+        .cart-footer {
+            padding: 20px;
+            border-top: 1px solid #f0f0f0;
+            text-align: center;
+            background: #fafbfc;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(46, 134, 193, 0.3);
+            transition: all 0.3s;
+        }
+
+        .btn-primary:active {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(46, 134, 193, 0.4);
+        }
+
+        .add-to-cart-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--success-color), #229954);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-left: 10px;
+            cursor: pointer;
+            vertical-align: middle;
+            box-shadow: 0 2px 6px rgba(39, 174, 96, 0.3);
+            transition: all 0.2s;
+        }
+
+        .add-to-cart-btn:active {
+            transform: scale(0.95);
+        }
+
+        .add-to-cart-btn.added {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            cursor: default;
+            box-shadow: none;
+        }
+
+        /* 统计内容样式 */
+        .stats-content {
+            background: #fff;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stats-header {
+            padding: 20px 24px;
+            background: linear-gradient(135deg, var(--accent-color), #e67e22);
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .stats-close {
+            cursor: pointer;
+            font-size: 24px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .stats-close:hover {
+            opacity: 1;
+        }
+
+        .stats-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .stats-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .stats-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stats-item-count {
+            background: linear-gradient(135deg, var(--accent-color), #e67e22);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .stats-empty {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+        }
+
+        .stats-footer {
+            padding: 16px;
+            background: #fafbfc;
+            border-top: 1px solid #f0f0f0;
+            text-align: center;
+        }
+
+        .stats-clear-btn {
+            background: none;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .stats-clear-btn:hover {
+            background: #e74c3c;
+            color: #fff;
+        }
+
+        /* 手机适配 */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 200;
+            background: #fff;
+            padding: 10px 14px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-color);
+            transition: all 0.3s;
+        }
+
+        .menu-toggle:active {
+            transform: scale(0.95);
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+            backdrop-filter: blur(2px);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 85%;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 100;
+                box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-header {
+                padding: 24px 15px;
+            }
+
+            .sidebar-header h2 {
+                font-size: 18px;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .overlay.active {
+                display: block;
+            }
+
+            .content-wrapper {
+                padding: 65px 10px 80px;
+            }
+
+            .content-body {
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            /* 面包屑导航移动端优化 */
+            .breadcrumb {
+                font-size: 11px;
+                padding: 6px 10px;
+                margin-bottom: 12px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+            }
+
+            /* 页面标题移动端优化 */
+            .page-header {
+                font-size: 18px;
+                margin: 0 0 12px;
+                line-height: 1.3;
+            }
+
+            .content-body p {
+                font-size: 14px;
+                line-height: 1.65;
+                margin-bottom: 10px;
+            }
+
+            .content-body h2 {
+                font-size: 15px;
+                margin: 14px 0 8px;
+                padding-left: 8px;
+            }
+
+            .content-body h3 {
+                font-size: 14px;
+                margin: 10px 0 6px;
+            }
+
+            /* 表格移动端优化 */
+            .table-container {
+                margin: 12px -16px;
+                padding: 0 12px;
+            }
+
+            table {
+                font-size: 12px;
+                margin: 0;
+            }
+
+            th, td {
+                padding: 10px 8px !important;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            /* 滚动���示 */
+            .table-container::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: 20px;
+                background: linear-gradient(90deg, transparent, rgba(0,0,0,0.05));
+                pointer-events: none;
+            }
+
+            /* 高亮块移动端优化 */
+            .highlight,
+            .price-comparison,
+            .special-offer,
+            .disadvantages,
+            .summary {
+                padding: 14px;
+                margin: 14px 0;
+                border-radius: 10px;
+            }
+
+            /* 列表移动端优化 */
+            .content-body ul {
+                padding-left: 18px;
+                margin: 8px 0;
+            }
+
+            .content-body li {
+                margin-bottom: 6px;
+                font-size: 14px;
+            }
+
+            /* 按钮移动端优化 */
+            .add-to-cart-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+                margin-left: auto;
+                flex-shrink: 0;
+            }
+
+            /* 页面标题容器优化 */
+            .content-wrapper > div:first-child > div[style*="display:flex"] {
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            /* 悬浮球移动端位置调整 */
+            .floating-ball {
+                bottom: 20px;
+                right: 16px;
+                width: 50px;
+                height: 50px;
+            }
+
+            .ball-count {
+                font-size: 15px;
+            }
+
+            .ball-label {
+                font-size: 8px;
+            }
+
+            /* 购物车弹窗移动端优化 */
+            .cart-content {
+                width: 93%;
+                max-height: 75vh;
+            }
+
+            .cart-header {
+                padding: 20px;
+            }
+
+            .cart-header h3 {
+                font-size: 16px;
+            }
+
+            .cart-body {
+                padding: 16px;
+            }
+
+            .cart-item {
+                padding: 10px 0;
+                font-size: 13px;
+            }
+
+            .cart-footer {
+                padding: 16px;
+            }
+
+            .btn-primary {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+
+            /* 水印优化 */
+            .watermark-text {
+                font-size: 12px;
+                margin: 100px 40px;
+                width: 260px;
+            }
+
+            /* 价格地图移动端优化 */
+            .price-map-container {
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            .price-map-container h2 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+            .price-map-container h3 {
+                font-size: 14px;
+                margin: 14px 0 8px;
+            }
+
+            .price-map-container p {
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            .price-map-container table {
+                font-size: 11px;
+                margin: 12px 0;
+            }
+
+            .price-map-container table th,
+            .price-map-container table td {
+                padding: 8px 6px;
+                font-size: 11px;
+            }
+
+            .price-map-container .warning,
+            .price-map-container .highlight {
+                padding: 12px;
+                margin: 12px 0;
+                font-size: 13px;
+            }
+        }
+
+        /* === 下载选项弹窗样式 === */
+        .download-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .download-modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .download-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .download-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .download-options {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .download-option-btn {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .download-option-btn:hover {
+            background: #e3f2fd;
+            border-color: var(--primary-color);
+        }
+
+        .download-option-btn:active {
+            transform: scale(0.98);
+        }
+
+        .download-icon {
+            font-size: 32px;
+            margin-right: 15px;
+        }
+
+        .download-option-text strong {
+            display: block;
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .download-option-text small {
+            display: block;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .download-tip {
+            padding: 15px 20px;
+            background: #fff3cd;
+            border-top: 1px solid #f0f0f0;
+            font-size: 13px;
+            color: #856404;
+            border-radius: 0 0 20px 20px;
+        }
+
+        /* === iOS浏览器引导样式 === */
+        .ios-guide {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10001;
+            padding: 20px;
+        }
+
+        .ios-guide-content {
+            color: white;
+            text-align: center;
+            padding-top: 60px;
+        }
+
+        .ios-guide-arrow {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(20px); }
+        }
+
+        .ios-guide-content p {
+            font-size: 18px;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        .ios-guide-content strong {
+            color: #ffd700;
+            font-size: 20px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .download-modal-content {
+                max-width: 90%;
+            }
+            .download-option-btn {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="watermark-container" id="watermark"></div>
+
+    <div class="floating-ball" onclick="openCart()">
+        <span class="ball-count" id="cartCount">0</span>
+        <span class="ball-label">生成报告</span>
+    </div>
+
+    <div class="cart-modal" id="cartModal">
+        <div class="cart-content">
+
+            <div class="cart-header">
+                <h3>📦 专属置业报告清单</h3>
+                <span style="cursor:pointer; font-size:20px;" onclick="closeCart()">×</span>
+            </div>
+
+            <div class="cart-body" id="cartList">
+                <p style="text-align:center; color:#999;">
+                    还没有添加楼盘。<br>请在楼盘详情页点击"+ 加入报告"
+                </p>
+            </div>
+
+            <div class="cart-footer">
+                <button class="btn-primary" onclick="showDownloadOptions()">⬇️ 导出专属报告</button>
+            </div>
+
+            <!-- 下载选项弹窗 -->
+            <div class="download-modal" id="downloadModal" style="display:none;">
+                <div class="download-modal-content">
+                    <div class="download-modal-header">
+                        <h3>📄 选择导出格式</h3>
+                        <span onclick="closeDownloadModal()" style="cursor:pointer;font-size:24px;">&times;</span>
+                    </div>
+                    <div class="download-options">
+                        <button class="download-option-btn" onclick="generateShareLink()">
+                            <span class="download-icon">🔗</span>
+                            <div class="download-option-text">
+                                <strong>生成分享链接 (推荐)</strong>
+                                <small>客户只看到选中的项目，专业且安全</small>
+                            </div>
+                        </button>
+                        <button class="download-option-btn" onclick="generatePDF()">
+                            <span class="download-icon">📋</span>
+                            <div class="download-option-text">
+                                <strong>PDF文件</strong>
+                                <small>下载PDF文件发送给客户</small>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="download-tip">
+                        💡 提示：分享链接最方便，客户点开直接看到你推荐的项目
+                    </div>
+                </div>
+            </div>
+
+            <!-- iOS浏览器引导遮罩 -->
+            <div class="ios-guide" id="iosGuide" style="display:none;">
+                <div class="ios-guide-content">
+                    <div class="ios-guide-arrow">↗</div>
+                    <p>点击右上角 <strong>"..."</strong></p>
+                    <p>选择 <strong>"在浏览器中打开"</strong></p>
+                    <p style="font-size:14px;color:#999;margin-top:15px;">这样可以选择Safari或其他浏览器</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 浏览统计弹窗 -->
+    <div class="stats-modal" id="statsModal">
+        <div class="stats-content">
+            <div class="stats-header">
+                <h3>📊 浏览统计</h3>
+                <span class="stats-close" onclick="closeStats()">×</span>
+            </div>
+
+            <div class="stats-body" id="statsList">
+                <!-- 统计列表将在这里动态生成 -->
+            </div>
+
+            <div class="stats-footer">
+                <button class="stats-clear-btn" onclick="clearStats()">🗑️ 清空统计</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="menu-toggle" onclick="toggleMobileMenu()">☰ 目录</div>
+    <div class="overlay" onclick="toggleMobileMenu()"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2 id="appTitle">🏢 深圳楼盘全集</h2>
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜楼盘 / 区域 / 300万..."
+                oninput="handleSearch(this.value)">
+            <div class="language-selector">
+                <span style="font-size:12px; color:#666; margin-right:5px;">🌐</span>
+                <button class="lang-btn active" data-lang="zh-CN" onclick="setLanguage('zh-CN')">中文</button>
+                <button class="lang-btn" data-lang="en-US" onclick="setLanguage('en-US')">English</button>
+            </div>
+            <div style="font-size:12px; color:#666;" id="vipLabel">贝壳李金松 VIP专属方案</div>
+            <button class="stats-btn" onclick="showStats()">
+                <span>📊</span>
+                <span>浏览统计</span>
+            </button>
+        </div>
+        <div class="nav-tree" id="navTree"></div>
+    </aside>
+
+    <main class="main-content">
+        <div class="content-wrapper" id="contentArea">
+            <div style="text-align:center; margin-top:100px; color:#999;">请选择左侧楼盘查看详情<br><br>数据加载自 data.js</div>
+        </div>
+    </main>
+
+    <script src="js/data_core.js"></script>
+    <script src="js/data_baoshan.js"></script>
+    <script src="js/data_shajing.js"></script>
+    <script src="js/data_futian.js"></script>
+    <script src="js/data_longhua.js"></script>
+    <script src="js/data_guangming.js"></script>
+    <script>
+        // --- 语言配置系统 ---
+        const translations = {
+            'zh-CN': {
+                appTitle: '🏢 深圳楼盘全集',
+                searchPlaceholder: '🔍 搜楼盘 / 区域 / 300万...',
+                vipLabel: '贝壳李金松 VIP专属方案',
+                menuToggle: '☰ 目录',
+                cartLabel: '生成报告',
+                cartTitle: '📦 专属置业报告清单',
+                cartEmpty: '还没有添加楼盘。<br>请在楼盘详情页点击"+ 加入报告"',
+                cartEmptyShort: '暂无选择的楼盘，请去详情页添加',
+                downloadReport: '⬇️ 下载专属页面 (HTML)',
+                delete: '删除',
+                addToReport: '➕ 加入报告',
+                added: '已加入',
+                priceRange: '【💰 价格区间】',
+                projectFacilities: '项目配套',
+                unitIntroduction: '户型介绍',
+                priceMap: '价格地图',
+                priceOverview: '价格总览',
+                noData: '暂无数据',
+                waitingInput: '等待录入...',
+                noResults: '无匹配结果',
+                foundResults: '找到 {count} 个结果',
+                containsKeyword: '包含搜索关键词',
+                matchedInFacilities: '在配套信息中匹配',
+                matchedInUnits: '在户型介绍中匹配',
+                matchedInName: '项目名称匹配',
+                selectProject: '请选择左侧楼盘查看详情<br><br>数据加载自 data.js',
+                needDataFile: '需加载数据文件 data_core.js',
+                addProjectsFirst: '请先添加楼盘！',
+                reportTitle: 'VIP 专属置业报告',
+                exclusiveAdvisor: '专属顾问：贝壳李金松',
+                phoneWechat: '电话/微信：17277898972',
+                discountNote: '预约看房领专属折扣（总价的一个点起）',
+                generatedDate: '生成日期：',
+                noFacilitiesInfo: '暂无配套信息',
+                noUnitInfo: '暂无户型信息'
+            },
+            'en-US': {
+                appTitle: '🏢 Shenzhen Property Collection',
+                searchPlaceholder: '🔍 Search properties / areas / 3M...',
+                vipLabel: 'Beike Li Jinsong VIP Exclusive Plan',
+                menuToggle: '☰ Menu',
+                cartLabel: 'Generate Report',
+                cartTitle: '📦 Exclusive Property Report List',
+                cartEmpty: 'No properties added yet.<br>Please click "+ Add to Report" on property detail page',
+                cartEmptyShort: 'No properties selected, please add from detail page',
+                downloadReport: '⬇️ Download Exclusive Page (HTML)',
+                delete: 'Delete',
+                addToReport: '➕ Add to Report',
+                added: 'Added',
+                priceRange: '【💰 Price Range】',
+                projectFacilities: 'Project Facilities',
+                unitIntroduction: 'Unit Introduction',
+                priceMap: 'Price Map',
+                priceOverview: 'Price Overview',
+                noData: 'No data available',
+                waitingInput: 'Waiting for input...',
+                noResults: 'No matching results',
+                foundResults: 'Found {count} results',
+                containsKeyword: 'Contains search keyword',
+                matchedInFacilities: 'Matched in facilities info',
+                matchedInUnits: 'Matched in unit info',
+                matchedInName: 'Matched in project name',
+                selectProject: 'Please select a property from the left to view details<br><br>Data loaded from data.js',
+                needDataFile: 'Need to load data file data_core.js',
+                addProjectsFirst: 'Please add properties first!',
+                reportTitle: 'VIP Exclusive Property Report',
+                exclusiveAdvisor: 'Exclusive Advisor: Beike Li Jinsong',
+                phoneWechat: 'Phone/WeChat: 17277898972',
+                discountNote: 'Book viewing to get exclusive discount (1% of total price)',
+                generatedDate: 'Generated Date: ',
+                noFacilitiesInfo: 'No facilities information available',
+                noUnitInfo: 'No unit information available'
+            }
+        };
+
+        let currentLanguage = localStorage.getItem('appLanguage') || 'zh-CN';
+
+        function t(key, params = {}) {
+            let text = translations[currentLanguage][key] || translations['zh-CN'][key] || key;
+            if (params.count !== undefined) {
+                text = text.replace('{count}', params.count);
+            }
+            return text;
+        }
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('appLanguage', lang);
+            document.documentElement.lang = lang;
+
+            // Update language buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+
+            // Update all UI text
+            updateUIText();
+
+            // Reinitialize menu to update labels
+            initMenu();
+        }
+
+        function updateUIText() {
+            // Update sidebar header
+            document.getElementById('appTitle').textContent = t('appTitle');
+            document.getElementById('searchInput').placeholder = t('searchPlaceholder');
+            document.getElementById('vipLabel').textContent = t('vipLabel');
+
+            // Update floating ball
+            document.querySelector('.ball-label').textContent = t('cartLabel');
+
+            // Update cart modal
+            const cartTitle = document.querySelector('.cart-header h3');
+            if (cartTitle) cartTitle.textContent = t('cartTitle');
+
+            const downloadBtn = document.querySelector('.btn-primary');
+            if (downloadBtn) downloadBtn.textContent = t('downloadReport');
+
+            // Update menu toggle
+            const menuToggle = document.querySelector('.menu-toggle');
+            if (menuToggle) menuToggle.textContent = t('menuToggle');
+
+            // Update placeholder content
+            const contentArea = document.getElementById('contentArea');
+            if (contentArea && contentArea.innerHTML.includes('请选择左侧楼盘')) {
+                contentArea.innerHTML = `<div style="text-align:center; margin-top:100px; color:#999;">${t('selectProject')}</div>`;
+            }
+        }
+
+        // Initialize language on page load
+        document.documentElement.lang = currentLanguage;
+        // Set active language button
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === currentLanguage);
+        });
+        updateUIText();
+
+        // --- 水印生成（已更新文字） ---
+        function initWatermark() {
+            const container = document.getElementById('watermark');
+            // 使用 \n 换行，样式中 white-space: pre-wrap 保证换行生效
+            const text = "贝壳李金松17277898972\n预约看房领专属折扣（总价的一个点起）";
+
+            // 生成水印，数量减少避免过于密集
+            for (let i = 0; i < 6; i++) {
+                const div = document.createElement('div');
+                div.className = 'watermark-text';
+                div.innerText = text;
+                container.appendChild(div);
+            }
+        }
+        initWatermark();
+
+        // --- 浏览统计功能 ---
+        // 记录浏览
+        function recordView(region, sub, proj) {
+            const key = `${region}|${sub}|${proj}`;
+            const stats = JSON.parse(localStorage.getItem('viewStats') || '{}');
+
+            if (!stats[key]) {
+                stats[key] = {
+                    region: region,
+                    sub: sub,
+                    proj: proj,
+                    count: 0,
+                    lastView: new Date().toISOString()
+                };
+            }
+
+            stats[key].count++;
+            stats[key].lastView = new Date().toISOString();
+
+            localStorage.setItem('viewStats', JSON.stringify(stats));
+        }
+
+        // 显示统计弹窗
+        function showStats() {
+            const modal = document.getElementById('statsModal');
+            const list = document.getElementById('statsList');
+
+            modal.classList.add('active');
+
+            const stats = JSON.parse(localStorage.getItem('viewStats') || '{}');
+            const entries = Object.entries(stats);
+
+            if (entries.length === 0) {
+                list.innerHTML = `
+                    <div class="stats-empty">
+                        <p>暂无浏览记录</p>
+                        <p style="font-size:12px; margin-top:10px;">查看楼盘详情后会自动统计</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // 按浏览次数排序
+            const sorted = entries.sort((a, b) => b[1].count - a[1].count);
+
+            list.innerHTML = sorted.map(([key, data]) => `
+                <div class="stats-item">
+                    <div>
+                        <div class="stats-item-name">${data.proj}</div>
+                        <div style="font-size:11px; color:#666; margin-top:4px;">
+                            ${data.region} - ${data.sub}
+                        </div>
+                    </div>
+                    <div class="stats-item-count">${data.count}次</div>
+                </div>
+            `).join('');
+        }
+
+        // 关闭统计弹窗
+        function closeStats() {
+            document.getElementById('statsModal').classList.remove('active');
+        }
+
+        // 清空统计
+        function clearStats() {
+            if (confirm('确定要清空所有浏览统计吗？')) {
+                localStorage.removeItem('viewStats');
+                showStats(); // 刷新显示
+            }
+        }
+
+        // --- 数据合并逻辑 ---
+        if (typeof db_baoshan !== 'undefined') Object.assign(db, db_baoshan);
+        if (typeof db_shajing !== 'undefined') Object.assign(db, db_shajing);
+        if (typeof db_futian !== 'undefined') Object.assign(db, db_futian);
+        if (typeof db_longhua !== 'undefined') Object.assign(db, db_longhua);
+        if (typeof db_guangming !== 'undefined') Object.assign(db, db_guangming);
+
+        // --- 购物车/报告系统 ---
+        let reportCart = new Set(); // 存储格式: "Region|Sub|Project"
+
+        function updateCartCount() {
+            document.getElementById('cartCount').innerText = reportCart.size;
+        }
+
+        function addToCart(region, sub, proj) {
+            const key = `${region}|${sub}|${proj}`;
+            if (reportCart.has(key)) return;
+            reportCart.add(key);
+            updateCartCount();
+
+            // 更新按钮状态
+            const btn = document.getElementById(`btn-${proj}`);
+            if (btn) {
+                btn.innerText = t('added');
+                btn.classList.add('added');
+            }
+        }
+
+        function removeFromCart(key) {
+            reportCart.delete(key);
+            updateCartCount();
+            openCart(); // 刷新列表
+        }
+
+        function openCart() {
+            const modal = document.getElementById('cartModal');
+            const list = document.getElementById('cartList');
+            modal.classList.add('active');
+            list.innerHTML = '';
+
+            if (reportCart.size === 0) {
+                list.innerHTML = `<p style="text-align:center; color:#999; margin-top:20px;">
+    ${t('cartEmpty')}
+</p>`;
+                return;
+            }
+
+            reportCart.forEach(key => {
+                const [r, s, p] = key.split('|');
+                const item = document.createElement('div');
+                item.className = 'cart-item';
+                item.innerHTML = `
+                <div><strong>${p}</strong> <span style="font-size:12px; color:#666;">(${r}-${s})</span></div>
+                <div class="btn-delete" onclick="removeFromCart('${key}')">${t('delete')}</div>
+            `;
+                list.appendChild(item);
+            });
+        }
+
+        function closeCart() {
+            document.getElementById('cartModal').classList.remove('active');
+        }
+
+        // === 下载选项相关函数 ===
+        function showDownloadOptions() {
+            if (reportCart.size === 0) return alert(t('addProjectsFirst'));
+            document.getElementById('downloadModal').style.display = 'flex';
+        }
+
+        function closeDownloadModal() {
+            document.getElementById('downloadModal').style.display = 'none';
+        }
+
+        // 生成分享链接
+        function generateShareLink() {
+            if (reportCart.size === 0) return alert(t('addProjectsFirst'));
+            closeDownloadModal();
+
+            // 将选中的项目编码到URL中
+            const projects = Array.from(reportCart);
+            const encoded = btoa(encodeURIComponent(JSON.stringify(projects)));
+
+            // 生成分享链接
+            const shareUrl = window.location.origin + window.location.pathname + '?share=' + encoded;
+
+            // 复制到剪贴板
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    showToast('✅ 分享链接已复制！\n\n发送给客户后，他们只能看到你选中的项目');
+                }).catch(() => fallbackCopy(shareUrl));
+            } else {
+                fallbackCopy(shareUrl);
+            }
+        }
+
+        // 检查并加载分享的链接
+        function loadSharedProjects() {
+            const params = new URLSearchParams(window.location.search);
+            const shareData = params.get('share');
+
+            if (shareData) {
+                try {
+                    const projects = JSON.parse(decodeURIComponent(atob(shareData)));
+
+                    // 清空购物车并加载分享的项目
+                    reportCart.clear();
+                    projects.forEach(key => reportCart.add(key));
+
+                    // 隐藏侧边栏和菜单，只显示分享的内容
+                    document.getElementById('sidebar').style.display = 'none';
+                    document.querySelector('.content-wrapper').style.marginLeft = '0';
+                    document.querySelector('.menu-toggle').style.display = 'none';
+                    document.querySelector('.floating-ball').style.display = 'none';
+
+                    // 显示分享提示
+                    const shareNotice = document.createElement('div');
+                    shareNotice.id = 'shareNotice';
+                    shareNotice.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#2e86c1;color:white;padding:15px;text-align:center;z-index:10000;font-size:14px;';
+                    shareNotice.innerHTML = '📢 这是贝壳李金松为您精选的楼盘推荐 <span style="margin-left:20px;cursor:pointer;" onclick="document.getElementById(\'shareNotice\').remove()">×</span>';
+                    document.body.appendChild(shareNotice);
+
+                    // 自动打开第一个项目
+                    if (projects.length > 0) {
+                        const [region, sub, proj] = projects[0].split('|');
+                        loadContent(region, sub, proj, '', '');
+                    }
+
+                    showToast('✨ 已加载 ' + projects.length + ' 个精选楼盘');
+                } catch (e) {
+                    console.error('加载分享内容失败:', e);
+                    alert('分享链接无效');
+                }
+            }
+        }
+
+        // 生成PDF报告
+        function generatePDF() {
+            if (reportCart.size === 0) return alert(t('addProjectsFirst'));
+            closeDownloadModal();
+
+            // 显示加载提示
+            const loadingMsg = document.createElement('div');
+            loadingMsg.id = 'pdfLoading';
+            loadingMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:20px 40px;border-radius:10px;z-index:10002;font-size:16px;';
+            loadingMsg.textContent = '正在生成PDF，请稍候...';
+            document.body.appendChild(loadingMsg);
+
+            // 生成HTML内容
+            let reportContent = '';
+            const today = new Date().toLocaleDateString();
+
+            reportCart.forEach(key => {
+                const [region, sub, proj] = key.split('|');
+                const projData = db[region][sub][proj] || {};
+
+                const peitao = projData.peitao && projData.peitao.trim() !== '' ? projData.peitao : `<p style="color:#999;">${t('noFacilitiesInfo')}</p>`;
+                const huxing = projData.huxing && projData.huxing.trim() !== '' ? projData.huxing : `<p style="color:#999;">${t('noUnitInfo')}</p>`;
+
+                reportContent += `
+        <div style="background:#fff;border-radius:12px;margin-bottom:20px;overflow:hidden;">
+            <div style="padding:20px;background:#2e86c1;color:white;">
+                <h2 style="margin:0;font-size:18px;">🏢 ${proj}</h2>
+                <p style="margin:5px 0 0;font-size:12px;opacity:0.9;">${region} - ${sub}</p>
+            </div>
+            <div style="padding:20px;">
+                <h3 style="color:#2e86c1;margin:0 0 10px;font-size:16px;">📍 项目配套</h3>
+                <div style="margin-bottom:20px;color:#333;line-height:1.8;">${peitao}</div>
+
+                <h3 style="color:#2e86c1;margin:0 0 10px;font-size:16px;">🏠 户型介绍</h3>
+                <div style="color:#333;line-height:1.8;">${huxing}</div>
+            </div>
+        </div>`;
+            });
+
+            const rTitle = t('reportTitle');
+            const rAdvisor = t('exclusiveAdvisor');
+            const rPhone = t('phoneWechat');
+            const rDiscount = t('discountNote');
+            const rDate = t('generatedDate');
+
+            const htmlContent = `
+                <div style="font-family: 'Microsoft YaHei', sans-serif; max-width: 800px; margin: 0 auto; padding: 30px 20px; background: #f4f6f9;">
+                    <div style="background: #fff; padding: 40px 30px; border-radius: 20px; text-align: center; margin-bottom: 30px; border-top: 8px solid #2e86c1; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+                        <h1 style="color: #1a5276; margin: 0 0 20px; font-size: 28px;">${rTitle}</h1>
+                        <div style="background: #f0f7fd; padding: 20px 30px; border-radius: 40px; display: inline-block; border: 2px solid #d0e8f9;">
+                            <div style="font-size: 16px; color: #2e86c1; margin-bottom: 8px;">👤 <strong>${rAdvisor}</strong></div>
+                            <div style="font-size: 18px; color: #333; font-weight: bold;">📞 ${rPhone}</div>
+                            <div style="color: #e74c3c; font-weight: bold; font-size: 14px; margin-top: 10px;">${rDiscount}</div>
+                        </div>
+                        <p style="color:#999; font-size:13px; margin-top:20px;">${rDate}${today}</p>
+                    </div>
+                    ${reportContent}
+                    <div style="text-align:center; color:#bdc3c7; font-size:12px; padding: 40px 20px; background:#fff;border-radius:12px;margin-top:20px;">
+                        <p style="margin:0 0 5px;">© 贝壳找房 - ${rAdvisor} 专属定制报告</p>
+                        <p style="margin:0;">如需了解更多楼盘信息，欢迎随时联系</p>
+                    </div>
+                </div>`;
+
+            // 创建可见的临时容器（用于渲染）
+            const container = document.createElement('div');
+            container.id = 'pdfContainer';
+            container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:99999;overflow:auto;padding:20px;';
+            container.innerHTML = htmlContent;
+            document.body.appendChild(container);
+
+            // PDF配置
+            const opt = {
+                margin: [15, 15, 15, 15],
+                filename: (currentLanguage === 'zh-CN' ? '专属置业报告' : 'Property_Report') + '_' + new Date().getTime() + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    letterRendering: true
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // 生成并下载PDF
+            setTimeout(() => {
+                html2pdf().set(opt).from(container).save().then(() => {
+                    document.body.removeChild(container);
+                    const loading = document.getElementById('pdfLoading');
+                    if (loading) loading.remove();
+                    showToast('✅ PDF已生成！可以直接发送给客户查看');
+                }).catch(err => {
+                    document.body.removeChild(container);
+                    const loading = document.getElementById('pdfLoading');
+                    if (loading) loading.remove();
+                    console.error('PDF生成失败:', err);
+                    alert('PDF生成失败，请重试或使用分享链接');
+                });
+            }, 500); // 等待渲染完成
+        }
+
+        // 备用复制方法（兼容旧浏览器）
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            try {
+                document.execCommand('copy');
+                showToast('✅ 分享链接已复制！\n\n发送给客户后，他们只能看到你选中的项目');
+            } catch (err) {
+                console.error('复制失败:', err);
+                showToast('❌ 复制失败，请重试');
+            }
+
+            document.body.removeChild(textarea);
+        }
+
+        // 显示提示消息
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:15px 25px;border-radius:10px;z-index:10003;font-size:14px;max-width:80%;text-align:center;white-space:pre-line;animation:fadeIn 0.3s;';
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // === iOS浏览器引导 ===
+        // 检测是否在微信或应用内
+        function isInApp() {
+            const ua = navigator.userAgent.toLowerCase();
+            return ua.indexOf('micromessenger') !== -1 || ua.indexOf('qq') !== -1;
+        }
+
+        // 显示iOS浏览器引导
+        function showiOSGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS && isInApp()) {
+                // 添加一个提示按钮到页面顶部
+                const guideBtn = document.createElement('div');
+                guideBtn.id = 'iosGuideBtn';
+                guideBtn.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff9800;color:white;text-align:center;padding:10px;font-size:14px;z-index:9999;cursor:pointer;';
+                guideBtn.innerHTML = '📱 建议使用Safari浏览器获得最佳体验，点击查看';
+                guideBtn.onclick = function() {
+                    document.getElementById('iosGuide').style.display = 'block';
+                };
+                document.body.appendChild(guideBtn);
+
+                // 点击遮罩关闭
+                document.getElementById('iosGuide').onclick = function() {
+                    this.style.display = 'none';
+                };
+            }
+        }
+
+        // --- 核心优化：带水印、宽绰排版、三层折叠报告生成器 ---
+        function generateReport() {
+            if (reportCart.size === 0) return alert(t('addProjectsFirst'));
+
+            let reportContent = '';
+            const today = new Date().toLocaleDateString();
+
+            // 1. 循环构建楼盘内容 (三层结构)
+            reportCart.forEach(key => {
+                const [region, sub, proj] = key.split('|');
+                const projData = db[region][sub][proj] || {};
+
+                const peitao = projData.peitao && projData.peitao.trim() !== '' ? projData.peitao : `<p style="color:#999;">${t('noFacilitiesInfo')}</p>`;
+                const huxing = projData.huxing && projData.huxing.trim() !== '' ? projData.huxing : `<p style="color:#999;">${t('noUnitInfo')}</p>`;
+
+                reportContent += `
+        <div class="proj-group">
+            <div class="btn-l1" onclick="toggleBox(this)">
+                <span class="title">🏢 ${proj}</span>
+                <span class="icon">＋</span>
+            </div>
+            <div class="content-l1" style="display:none;">
+                
+                <div class="category-box">
+                    <div class="btn-l2" onclick="toggleBox(this)">
+                        <span>📍 ${t('projectFacilities')}</span>
+                        <span class="icon">＋</span>
+                    </div>
+                    <div class="content-l2" style="display:none;">
+                        <div class="article-body">${peitao}</div>
+                    </div>
+                </div>
+
+                <div class="category-box">
+                    <div class="btn-l2" onclick="toggleBox(this)">
+                        <span>🏠 ${t('unitIntroduction')}</span>
+                        <span class="icon">＋</span>
+                    </div>
+                    <div class="content-l2" style="display:none;">
+                        <div class="article-body">${huxing}</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>`;
+            });
+
+            const rTitle = t('reportTitle');
+            const rAdvisor = t('exclusiveAdvisor');
+            const rPhone = t('phoneWechat');
+            const rDiscount = t('discountNote');
+            const rDate = t('generatedDate');
+
+            // 2. 生成完整的 HTML (包含针对移动端优化的 CSS 和水印脚本)
+            const htmlTemplate = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>${rTitle}</title>
+    <style>
+        /* === 消除排版局促感：全局样式 === */
+        body { font-family: "Microsoft YaHei", -apple-system, sans-serif; background: #f4f6f9; margin: 0; padding: 25px 15px; color: #333; line-height: 1.8; }
+        .report-wrapper { max-width: 700px; margin: 0 auto; position: relative; z-index: 10; }
+        
+        /* === 头部：加深视觉深度 === */
+        .report-header { background: #fff; padding: 40px 20px; border-radius: 20px; text-align: center; box-shadow: 0 12px 30px rgba(0,0,0,0.06); margin-bottom: 30px; border-top: 8px solid #2e86c1; }
+        .report-header h1 { color: #1a5276; margin: 0 0 15px; font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+        .info-pill { background: #f0f7fd; padding: 18px 25px; border-radius: 60px; display: inline-block; border: 1px solid #d0e8f9; }
+        .discount-highlight { color: #e74c3c; font-weight: bold; font-size: 14px; display: block; margin-top: 8px; }
+
+        /* === 第一层：项目卡片 (增加间距) === */
+        .proj-group { background: #fff; border-radius: 18px; margin-bottom: 25px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.04); }
+        .btn-l1 { padding: 24px 20px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f2f2f2; }
+        .btn-l1 .title { font-size: 20px; font-weight: bold; color: #2c3e50; }
+        .content-l1 { background: #fafafa; padding: 15px; }
+
+        /* === 第二层：分类块 (增加呼吸感) === */
+        .category-box { margin-bottom: 15px; border-radius: 14px; overflow: hidden; border: 1px solid #eee; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .btn-l2 { padding: 18px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #555; }
+        .content-l2 { border-top: 1px dashed #f0f0f0; }
+
+        /* === 第三层：内容正文 (优化排版) === */
+        .article-body { padding: 25px 20px; font-size: 15px; color: #444; word-wrap: break-word; }
+        .article-body p { margin-bottom: 18px; text-align: justify; }
+        .article-body table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; background: #fff; }
+        .article-body th, .article-body td { border: 1px solid #eee; padding: 14px 10px; text-align: left; }
+        .article-body th { background: #f9f9f9; color: #666; width: 32%; }
+        
+        /* 富文本修饰块 */
+        .highlight, .price-comparison, .special-offer, .disadvantages { padding: 20px; border-radius: 10px; margin: 25px 0; border-left: 6px solid #ccc; font-size: 14px; }
+        .highlight { border-color: #2e86c1; background: #f1f9ff; }
+        .special-offer { border-color: #27ae60; background: #f2fff6; }
+        .disadvantages { border-color: #e74c3c; background: #fff7f7; }
+
+        /* 交互小标 */
+        .icon { color: #ccc; font-size: 20px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .active .icon { transform: rotate(45deg); color: #2e86c1; }
+
+        /* === 水印样式 === */
+        .wm-layer { position: fixed; inset: 0; pointer-events: none; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; overflow: hidden; opacity: 0.07; }
+        .wm-item { transform: rotate(-25deg); font-size: 14px; color: #000; font-weight: bold; margin: 60px 40px; width: 300px; text-align: center; white-space: pre-wrap; line-height: 1.5; }
+
+        /* 手机超小屏适配 */
+        @media (max-width: 400px) {
+            body { padding: 15px 10px; }
+            .report-header { padding: 30px 15px; }
+            .btn-l1 .title { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wm-layer" id="wm"></div>
+
+    <div class="report-wrapper">
+        <div class="report-header">
+            <h1>${rTitle}</h1>
+            <div class="info-pill">
+                <strong>👤 ${rAdvisor}</strong><br>
+                📞 ${rPhone}
+                <span class="discount-highlight">${rDiscount}</span>
+            </div>
+            <p style="color:#999; font-size:12px; margin-top:25px;">${rDate}${today}</p>
+        </div>
+        
+        ${reportContent}
+        
+        <div style="text-align:center; color:#bdc3c7; font-size:12px; padding: 45px 20px;">
+            © 贝壳找房 - ${rAdvisor} 专属定制报告
+        </div>
+    </div>
+
+    <script>
+        // 核心交互逻辑：三层折叠控制
+        function toggleBox(btn) {
+            btn.classList.toggle('active');
+            var content = btn.nextElementSibling;
+            if (content.style.display === "none") {
+                content.style.display = "block";
+            } else {
+                content.style.display = "none";
+            }
+        }
+
+        // 水印注入逻辑
+        function drawWatermark() {
+            const container = document.getElementById('wm');
+            // 此处保持您原有的水印文案和换行符
+            const text = "贝壳李金松17277898972\\n预约看房领专属折扣（总价的一个点起）";
+            for(let i=0; i<15; i++) {
+                const div = document.createElement('div');
+                div.className = 'wm-item';
+                div.innerText = text.replace('\\\\n', '\\n');
+                container.appendChild(div);
+            }
+        }
+        drawWatermark();
+    <\/script>
+</body>
+</html>`;
+
+            // 3. 执行下载流程
+            const blob = new Blob([htmlTemplate], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const reportName = currentLanguage === 'zh-CN' ? '专属置业报告' : 'Property_Report';
+            a.download = reportName + "_" + new Date().getTime() + ".html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- 菜单与内容逻辑 ---
+
+        function createNode(text, className, parent) {
+            const div = document.createElement('div');
+            div.className = className;
+            div.innerHTML = text;
+            parent.appendChild(div);
+            return div;
+        }
+
+        function createContainer(parent) {
+            const div = document.createElement('div');
+            div.className = 'nav-group';
+            parent.appendChild(div);
+            return div;
+        }
+
+        function toggleNode(node, container) {
+            node.classList.toggle('open');
+            container.classList.toggle('show');
+        }
+
+        function loadContent(region, sub, proj, typeLabel, htmlContent) {
+            const area = document.getElementById('contentArea');
+            let content;
+
+            // 记录浏览（排除价格地图）
+            if (proj !== t('priceMap') && proj !== "价格地图" && proj !== "价格总览") {
+                recordView(region, sub, proj);
+            }
+
+            // Check if it's price map (handle both Chinese and English)
+            if (proj === t('priceMap') || proj === "价格地图" || proj === "价格总览") {
+                const priceMapContent = db[region]['_PRICE_MAP'] || `<div class="placeholder">${t('noData')}</div>`;
+                area.innerHTML = `
+                <div class="breadcrumb">${region} / ${t('priceMap')}</div>
+                <h1 class="page-header">${region} - ${t('priceOverview')}</h1>
+                <div class="price-map-container">${priceMapContent}</div>`;
+            } else {
+                const data = db[region] && db[region][sub] && db[region][sub][proj] ? db[region][sub][proj] : {};
+                // Check if it's facilities (handle both Chinese and English labels)
+                const isFacilities = typeLabel === t('projectFacilities') || typeLabel === '项目配套' || typeLabel === 'Project Facilities';
+                htmlContent = data[isFacilities ? 'peitao' : 'huxing'];
+
+                content = htmlContent && htmlContent.trim() !== '' ? htmlContent : `<div class="placeholder">${t('waitingInput')}</div>`;
+
+                // 检查是否已在购物车
+                const key = `${region}|${sub}|${proj}`;
+                const isAdded = reportCart.has(key);
+                const btnText = isAdded ? t('added') : t('addToReport');
+                const btnClass = isAdded ? "add-to-cart-btn added" : "add-to-cart-btn";
+
+                // Get translated type label
+                const translatedTypeLabel = isFacilities ? t('projectFacilities') : t('unitIntroduction');
+
+                area.innerHTML = `
+                <div class="breadcrumb">${region} / ${sub} / ${proj}</div>
+                <div style="display:flex; align-items:center; margin-bottom:20px;">
+                    <h1 class="page-header" style="margin:0;">${proj} - ${translatedTypeLabel}</h1>
+                    <div id="btn-${proj}" class="${btnClass}" onclick="addToCart('${region}', '${sub}', '${proj}')">${btnText}</div>
+                </div>
+                <div class="content-body">${content}</div>`;
+            }
+            document.querySelector('.main-content').scrollTop = 0;
+        }
+
+        // --- 搜索逻辑 ---
+        function handleSearch(keyword) {
+            const navTree = document.getElementById('navTree');
+            keyword = keyword.trim().toLowerCase();
+
+            if (!keyword) {
+                initMenu();
+                return;
+            }
+
+            let results = [];
+            const regionOrder = ["南山区", "福田区", "宝安区", "龙华区", "沙井", "光明区"];
+
+            regionOrder.forEach(region => {
+                if (!db[region]) return;
+                const subRegions = db[region];
+
+                if (subRegions._PRICE_MAP && subRegions._PRICE_MAP.toLowerCase().includes(keyword)) {
+                    results.push({
+                        name: `${region} - ${t('priceOverview')}`,
+                        path: `${region}`,
+                        match: t('containsKeyword'),
+                        action: () => loadContent(region, t('priceRange').replace('【💰 ', '').replace('】', ''), t('priceMap'), t('priceOverview'), null)
+                    });
+                }
+
+                Object.keys(subRegions).forEach(sub => {
+                    if (sub === '_PRICE_MAP') return;
+                    const projects = subRegions[sub];
+
+                    Object.keys(projects).forEach(proj => {
+                        const data = projects[proj];
+                        const peitao = (data.peitao || "").toLowerCase();
+                        const huxing = (data.huxing || "").toLowerCase();
+                        const projName = proj.toLowerCase();
+                        const subName = sub.toLowerCase();
+
+                        if (projName.includes(keyword) || subName.includes(keyword) || peitao.includes(keyword) || huxing.includes(keyword)) {
+                            let matchText = "";
+                            if (peitao.includes(keyword)) matchText = t('matchedInFacilities');
+                            else if (huxing.includes(keyword)) matchText = t('matchedInUnits');
+                            else matchText = t('matchedInName');
+
+                            results.push({
+                                name: proj,
+                                path: `${region} / ${sub}`,
+                                match: matchText,
+                                action: () => loadContent(region, sub, proj, t('projectFacilities'), data.peitao)
+                            });
+                        }
+                    });
+                });
+            });
+
+            navTree.innerHTML = '';
+            if (results.length === 0) {
+                navTree.innerHTML = `<div style="padding:20px; color:#999; text-align:center;">${t('noResults')}</div>`;
+            } else {
+                const header = document.createElement('div');
+                header.style.padding = "10px 20px";
+                header.style.fontSize = "12px";
+                header.style.color = "#999";
+                header.innerText = t('foundResults', { count: results.length });
+                navTree.appendChild(header);
+
+                results.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'search-result-item';
+                    el.innerHTML = `
+                    <div class="search-path">${item.path}</div>
+                    <div class="search-name">${item.name}</div>
+                    <div class="search-match">${item.match}</div>
+                `;
+                    el.onclick = () => {
+                        item.action();
+                        if (window.innerWidth <= 768) toggleMobileMenu();
+                        document.querySelectorAll('.search-result-item').forEach(i => i.style.background = '');
+                        el.style.background = '#e8f4fc';
+                    };
+                    navTree.appendChild(el);
+                });
+            }
+        }
+
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        function initMenu() {
+            if (typeof db === 'undefined' || Object.keys(db).length === 0) {
+                document.getElementById('contentArea').innerHTML = `<div style="color:red; text-align:center; margin-top:50px;">${t('needDataFile')}</div>`;
+                return;
+            }
+
+            const navTree = document.getElementById('navTree');
+            const regionOrder = ["南山区", "福田区", "宝安区", "龙华区", "沙井", "光明区"];
+
+            navTree.innerHTML = '';
+
+            regionOrder.forEach(region => {
+                const subRegions = db[region] || {};
+                if (Object.keys(subRegions).length === 0 && !subRegions._PRICE_MAP) return;
+
+                const l1 = createNode(region, 'level-1 has-arrow', navTree);
+                const l1Container = createContainer(navTree);
+                l1.onclick = () => toggleNode(l1, l1Container);
+
+                if (subRegions._PRICE_MAP) {
+                    const priceNode = createNode(t('priceRange'), 'level-2 summary-entry', l1Container);
+                    priceNode.onclick = function () {
+                        document.querySelectorAll('.level-4, .summary-entry').forEach(el => el.classList.remove('active'));
+                        this.classList.add('active');
+                        loadContent(region, t('priceRange').replace('【💰 ', '').replace('】', ''), t('priceMap'), t('priceOverview'), null);
+                        if (window.innerWidth <= 768) toggleMobileMenu();
+                    };
+                }
+
+                let subKeys = Object.keys(subRegions).filter(key => key !== '_PRICE_MAP');
+                if (region === "南山区") {
+                    const order = ['前海', '粤海街道', '华侨城', '南头', '赤湾', '西丽'];
+                    subKeys.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                }
+
+                subKeys.forEach(sub => {
+                    const projects = subRegions[sub];
+                    if (Object.keys(projects).length === 0) return;
+
+                    const l2 = createNode(sub, 'level-2 has-arrow', l1Container);
+                    const l2Container = createContainer(l1Container);
+                    l2.onclick = () => toggleNode(l2, l2Container);
+
+                    Object.keys(projects).forEach(proj => {
+                        const l3 = createNode(proj, 'level-3 has-arrow', l2Container);
+                        const l3Container = createContainer(l2Container);
+                        l3.onclick = () => toggleNode(l3, l3Container);
+
+                        const types = [
+                            { key: 'peitao', label: t('projectFacilities') },
+                            { key: 'huxing', label: t('unitIntroduction') }
+                        ];
+                        types.forEach(type => {
+                            const l4 = document.createElement('div');
+                            l4.className = 'level-4';
+                            l4.innerText = type.label;
+                            l4.onclick = function () {
+                                document.querySelectorAll('.level-4, .summary-entry').forEach(el => el.classList.remove('active'));
+                                this.classList.add('active');
+                                const data = projects[proj] || {};
+                                loadContent(region, sub, proj, type.label, data[type.key]);
+                                if (window.innerWidth <= 768) toggleMobileMenu();
+                            };
+                            l3Container.appendChild(l4);
+                        });
+                    });
+                });
+            });
+        }
+
+        initMenu();
+        showiOSGuide();
+        loadSharedProjects(); // 加载分享链接
+    </script>
+</body>
+
+</html>
