@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>深圳楼盘</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2D3142">
+
+    <!-- PDF导出库 - html2canvas + jsPDF 方案 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        /* === 基础样式 === */
+        :root {
+            --primary-color: #2D3142;
+            --sidebar-bg: #2D3142;
+            --main-bg: #F5F7FA;
+            --card-bg: #fff;
+            --border-color: #e0e0e0;
+            --text-dark: #2D3142;
+            --text-light: #6c757d;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", -apple-system, sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            color: #333;
+            background: #F5F7FA;
+        }
+
+        /* === 水印样式修正版 (支持换行) === */
+        .watermark-container {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            overflow: hidden;
+            opacity: 0.1;
+            /* 透明度 */
+        }
+
+        .watermark-text {
+            transform: rotate(-25deg);
+            font-size: 15px;
+            color: #000;
+            font-weight: 800;
+            margin: 60px 40px;
+            width: 320px;
+            /* 宽度给够，防止截断 */
+            text-align: center;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            /* 关键：允许\n换行 */
+        }
+
+        /* 侧边栏 & 搜索 */
+        .sidebar {
+            width: 320px;
+            background: #2D3142;
+            border-right: none;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            height: 100%;
+            user-select: none;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: #2D3142;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        /* 浏览统计按钮 */
+        .stats-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .stats-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-btn:active {
+            transform: scale(0.95);
+        }
+
+
+        /* 搜索框样式 */
+        .search-box {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-box:focus {
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .nav-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 50px;
+        }
+
+        /* 导航节点 */
+        .nav-group {
+            display: none;
+        }
+
+        .nav-group.show {
+            display: block;
+        }
+
+        .has-arrow::after {
+            content: '▸';
+            float: right;
+            color: #999;
+            transform: rotate(0);
+            transition: transform 0.2s;
+        }
+
+        .has-arrow.open::after {
+            transform: rotate(90deg);
+        }
+
+        .level-1 {
+            padding: 16px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .level-1:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .level-1:active {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .level-2 {
+            padding: 12px 20px 12px 30px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            transition: all 0.2s;
+        }
+
+        .level-2:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .level-2:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .level-2.active {
+            background: rgba(102, 126, 234, 0.25);
+            color: #fff;
+            font-weight: 600;
+            border-left-color: #667eea;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            scroll-behavior: smooth;
+            background: #f5f7fa;
+        }
+
+        .content-wrapper {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* 内容样式 */
+        .content-body {
+            background: #fff;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .content-body p {
+            line-height: 1.7;
+            margin-bottom: 12px;
+            text-align: justify;
+            color: #333;
+            font-size: 15px;
+        }
+
+        .content-body h2 {
+            color: var(--primary-dark);
+            border-left: 4px solid var(--primary-color);
+            padding-left: 12px;
+            margin: 24px 0 16px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .content-body h3 {
+            color: var(--primary-color);
+            margin: 20px 0 12px;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        /* 面包屑导航 */
+        .breadcrumb {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        /* 页面标题 */
+        .page-header {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin: 0 0 20px;
+        }
+
+        /* 价格地图容器 */
+        .price-map-container {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            overflow-x: auto;
+        }
+
+        .price-map-container section {
+            margin-bottom: 30px;
+        }
+
+        .price-map-container section:last-child {
+            margin-bottom: 0;
+        }
+
+        .price-map-container h2 {
+            color: var(--primary-dark);
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .price-map-container h3 {
+            color: var(--primary-color);
+            font-size: 17px;
+            font-weight: 600;
+            margin: 20px 0 12px;
+        }
+
+        .price-map-container table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .price-map-container table th,
+        .price-map-container table td {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .price-map-container table th {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            font-weight: 600;
+        }
+
+        .price-map-container table td {
+            background: white;
+            color: #333;
+        }
+
+        .price-map-container tr:nth-child(even) td {
+            background: #f8f9fa;
+        }
+
+        .price-map-container tr:hover td {
+            background: #e8f4fc;
+        }
+
+        .price-map-container p {
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .price-map-container .warning,
+        .price-map-container .highlight {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        .content-body ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 16px 0;
+            font-size: 14px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 表格容器 - 用于移动端横向滚动 */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 16px -16px;
+            padding: 0 16px;
+            position: relative;
+        }
+
+        .table-container table {
+            margin: 0;
+            min-width: 100%;
+        }
+
+        /* 表格滚动提示 */
+        .table-container::after {
+            content: '👉 左右滑动查看';
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .table-container::after {
+                opacity: 1;
+            }
+        }
+
+        th,
+        td {
+            border: none;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            font-weight: 600;
+            width: 25%;
+            color: #495057;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fafbfc;
+        }
+
+        tr:hover {
+            background-color: #f0f4f8;
+        }
+
+        td:first-child {
+            border-left: 3px solid var(--primary-color);
+        }
+
+        /* === 彩色渐变卡片网格样式 === */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .project-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .project-card:nth-child(4n+1)::before {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .project-card:nth-child(4n+2)::before {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .project-card:nth-child(4n+3)::before {
+            background: linear-gradient(135deg, #fad0c4 0%, #ffd1ff 100%);
+        }
+
+        .project-card:nth-child(4n+4)::before {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .project-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .project-card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2D3142;
+            margin-bottom: 12px;
+        }
+
+        .project-card-location {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 15px;
+            display: inline-block;
+            padding: 4px 12px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .project-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .project-card-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .project-card-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        .project-card-btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .project-card-btn-secondary {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        .project-card-btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #e8f4fc, #d6eaf8);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 8px rgba(46, 134, 193, 0.15);
+        }
+
+        .price-comparison,
+        .special-offer {
+            background: linear-gradient(135deg, #e8f6f3, #d5f4e6);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid var(--success-color);
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.15);
+        }
+
+        .disadvantages {
+            background: linear-gradient(135deg, #fdedec, #fadbd8);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid var(--danger-color);
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.15);
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #fef9e7, #fcf3cf);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid var(--accent-color);
+            box-shadow: 0 2px 8px rgba(243, 156, 18, 0.15);
+        }
+
+        .placeholder {
+            padding: 50px;
+            text-align: center;
+            color: #999;
+            border: 2px dashed #e0e0e0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #fafafa, #f5f5f5);
+        }
+
+        /* 搜索结果样式 */
+        .search-result-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+
+        .search-result-item:active {
+            background: #f5f7fa;
+            transform: scale(0.99);
+        }
+
+        .search-path {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+
+        .search-name {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+
+        .search-match {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* === 悬浮球 & 购物车功能 === */
+        .floating-ball {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: #000;
+            border-radius: 50%;
+            box-shadow: 0 4px 16px rgba(46, 134, 193, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .floating-ball:active {
+            transform: scale(0.92);
+        }
+
+        .ball-count {
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .ball-label {
+            font-size: 9px;
+            opacity: 0.95;
+        }
+
+        /* 购物车弹窗 */
+        .cart-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .cart-modal.active {
+            display: flex;
+        }
+
+        /* 统计弹窗 */
+        .stats-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .stats-modal.active {
+            display: flex;
+        }
+
+        .cart-content {
+            background: #fff;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .cart-header {
+            padding: 24px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .cart-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .cart-item:active {
+            background: #f8f9fa;
+        }
+
+        .cart-footer {
+            padding: 20px;
+            border-top: 1px solid #f0f0f0;
+            text-align: center;
+            background: #fafbfc;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: #000;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(46, 134, 193, 0.3);
+            transition: all 0.3s;
+        }
+
+        .btn-primary:active {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(46, 134, 193, 0.4);
+        }
+
+        .add-to-cart-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--success-color), #229954);
+            color: #000;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-left: 10px;
+            cursor: pointer;
+            vertical-align: middle;
+            box-shadow: 0 2px 6px rgba(39, 174, 96, 0.3);
+            transition: all 0.2s;
+        }
+
+        .add-to-cart-btn:active {
+            transform: scale(0.95);
+        }
+
+        .add-to-cart-btn.added {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            cursor: default;
+            box-shadow: none;
+        }
+
+        /* 统计内容样式 */
+        .stats-content {
+            background: #fff;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stats-header {
+            padding: 20px 24px;
+            background: linear-gradient(135deg, var(--accent-color), #e67e22);
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .stats-close {
+            cursor: pointer;
+            font-size: 24px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .stats-close:hover {
+            opacity: 1;
+        }
+
+        .stats-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .stats-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .stats-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stats-item-count {
+            background: linear-gradient(135deg, var(--accent-color), #e67e22);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .stats-empty {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+        }
+
+        .stats-footer {
+            padding: 16px;
+            background: #fafbfc;
+            border-top: 1px solid #f0f0f0;
+            text-align: center;
+        }
+
+        .stats-clear-btn {
+            background: none;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .stats-clear-btn:hover {
+            background: #e74c3c;
+            color: #fff;
+        }
+
+        /* 手机适配 */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 200;
+            background: #fff;
+            padding: 10px 14px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-color);
+            transition: all 0.3s;
+        }
+
+        .menu-toggle:active {
+            transform: scale(0.95);
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+            backdrop-filter: blur(2px);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 85%;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 100;
+                box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-header {
+                padding: 24px 15px;
+            }
+
+            .sidebar-header h2 {
+                font-size: 18px;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .overlay.active {
+                display: block;
+            }
+
+            .content-wrapper {
+                padding: 65px 10px 80px;
+            }
+
+            .content-body {
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            /* 面包屑导航移动端优化 */
+            .breadcrumb {
+                font-size: 11px;
+                padding: 6px 10px;
+                margin-bottom: 12px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+            }
+
+            /* 页面标题移动端优化 */
+            .page-header {
+                font-size: 18px;
+                margin: 0 0 12px;
+                line-height: 1.3;
+            }
+
+            .content-body p {
+                font-size: 14px;
+                line-height: 1.65;
+                margin-bottom: 10px;
+            }
+
+            .content-body h2 {
+                font-size: 15px;
+                margin: 14px 0 8px;
+                padding-left: 8px;
+            }
+
+            .content-body h3 {
+                font-size: 14px;
+                margin: 10px 0 6px;
+            }
+
+            /* 表格移动端优化 */
+            .table-container {
+                margin: 12px -16px;
+                padding: 0 12px;
+            }
+
+            table {
+                font-size: 12px;
+                margin: 0;
+            }
+
+            th, td {
+                padding: 10px 8px !important;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            /* 滚动���示 */
+            .table-container::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: 20px;
+                background: linear-gradient(90deg, transparent, rgba(0,0,0,0.05));
+                pointer-events: none;
+            }
+
+            /* 高亮块移动端优化 */
+            .highlight,
+            .price-comparison,
+            .special-offer,
+            .disadvantages,
+            .summary {
+                padding: 14px;
+                margin: 14px 0;
+                border-radius: 10px;
+            }
+
+            /* 列表移动端优化 */
+            .content-body ul {
+                padding-left: 18px;
+                margin: 8px 0;
+            }
+
+            .content-body li {
+                margin-bottom: 6px;
+                font-size: 14px;
+            }
+
+            /* 按钮移动端优化 */
+            .add-to-cart-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+                margin-left: auto;
+                flex-shrink: 0;
+            }
+
+            /* 页面标题容器优化 */
+            .content-wrapper > div:first-child > div[style*="display:flex"] {
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            /* 悬浮球移动端位置调整 */
+            .floating-ball {
+                bottom: 20px;
+                right: 16px;
+                width: 50px;
+                height: 50px;
+            }
+
+            .ball-count {
+                font-size: 15px;
+            }
+
+            .ball-label {
+                font-size: 8px;
+            }
+
+            /* 购物车弹窗移动端优化 */
+            .cart-content {
+                width: 93%;
+                max-height: 75vh;
+            }
+
+            .cart-header {
+                padding: 20px;
+            }
+
+            .cart-header h3 {
+                font-size: 16px;
+            }
+
+            .cart-body {
+                padding: 16px;
+            }
+
+            .cart-item {
+                padding: 10px 0;
+                font-size: 13px;
+            }
+
+            .cart-footer {
+                padding: 16px;
+            }
+
+            .btn-primary {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+
+            /* 水印优化 */
+            .watermark-text {
+                font-size: 12px;
+                margin: 100px 40px;
+                width: 260px;
+            }
+
+            /* 价格地图移动端优化 */
+            .price-map-container {
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            .price-map-container h2 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+            .price-map-container h3 {
+                font-size: 14px;
+                margin: 14px 0 8px;
+            }
+
+            .price-map-container p {
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            .price-map-container table {
+                font-size: 11px;
+                margin: 12px 0;
+            }
+
+            .price-map-container table th,
+            .price-map-container table td {
+                padding: 8px 6px;
+                font-size: 11px;
+            }
+
+            .price-map-container .warning,
+            .price-map-container .highlight {
+                padding: 12px;
+                margin: 12px 0;
+                font-size: 13px;
+            }
+        }
+
+        /* === 下载选项弹窗样式 === */
+        .download-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .download-modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .download-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .download-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .download-options {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .download-option-btn {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .download-option-btn:hover {
+            background: #e3f2fd;
+            border-color: var(--primary-color);
+        }
+
+        .download-option-btn:active {
+            transform: scale(0.98);
+        }
+
+        .download-icon {
+            font-size: 32px;
+            margin-right: 15px;
+        }
+
+        .download-option-text strong {
+            display: block;
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .download-option-text small {
+            display: block;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .download-tip {
+            padding: 15px 20px;
+            background: #fff3cd;
+            border-top: 1px solid #f0f0f0;
+            font-size: 13px;
+            color: #856404;
+            border-radius: 0 0 20px 20px;
+        }
+
+        /* === iOS浏览器引导样式 === */
+        .ios-guide {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10001;
+            padding: 20px;
+        }
+
+        .ios-guide-content {
+            color: white;
+            text-align: center;
+            padding-top: 60px;
+        }
+
+        .ios-guide-arrow {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(20px); }
+        }
+
+        .ios-guide-content p {
+            font-size: 18px;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        .ios-guide-content strong {
+            color: #ffd700;
+            font-size: 20px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .download-modal-content {
+                max-width: 90%;
+            }
+            .download-option-btn {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="watermark-container" id="watermark"></div>
+
+    <div class="floating-ball" onclick="openCart()">
+        <span class="ball-count" id="cartCount">0</span>
+        <span class="ball-label">生成报告</span>
+    </div>
+
+    <div class="cart-modal" id="cartModal">
+        <div class="cart-content">
+
+            <div class="cart-header">
+                <h3>📦 专属置业报告清单</h3>
+                <span style="cursor:pointer; font-size:20px;" onclick="closeCart()">×</span>
+            </div>
+
+            <div class="cart-body" id="cartList">
+                <p style="text-align:center; color:#999;">
+                    还没有添加楼盘。<br>请在楼盘详情页点击"+ 加入报告"
+                </p>
+            </div>
+
+            <div class="cart-footer">
+                <button class="btn-primary" onclick="showDownloadOptions()">⬇️ 导出专属报告</button>
+            </div>
+
+            <!-- 下载选项弹窗 -->
+            <div class="download-modal" id="downloadModal" style="display:none;">
+                <div class="download-modal-content">
+                    <div class="download-modal-header">
+                        <h3>📄 选择导出格式</h3>
+                        <span onclick="closeDownloadModal()" style="cursor:pointer;font-size:24px;">&times;</span>
+                    </div>
+                    <div class="download-options">
+                        <button class="download-option-btn" onclick="generateShareLink()">
+                            <span class="download-icon">🔗</span>
+                            <div class="download-option-text">
+                                <strong>生成分享链接 (推荐)</strong>
+                                <small>客户只看到选中的项目，专业且安全</small>
+                            </div>
+                        </button>
+                        <button class="download-option-btn" onclick="showClientNameInput()">
+                            <span class="download-icon">📋</span>
+                            <div class="download-option-text">
+                                <strong>PDF文件（杂志级排版）</strong>
+                                <small>专业报告，含封面、目录、名片</small>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="download-tip">
+                        💡 提示：分享链接最方便，客户点开直接看到你推荐的项目
+                    </div>
+                </div>
+            </div>
+
+            <!-- iOS浏览器引导遮罩 -->
+            <div class="ios-guide" id="iosGuide" style="display:none;">
+                <div class="ios-guide-content">
+                    <div class="ios-guide-arrow">↗</div>
+                    <p>点击右上角 <strong>"..."</strong></p>
+                    <p>选择 <strong>"在浏览器中打开"</strong></p>
+                    <p style="font-size:14px;color:#999;margin-top:15px;">这样可以选择Safari或其他浏览器</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 浏览统计弹窗 -->
+    <div class="stats-modal" id="statsModal">
+        <div class="stats-content">
+            <div class="stats-header">
+                <h3>📊 浏览统计</h3>
+                <span class="stats-close" onclick="closeStats()">×</span>
+            </div>
+
+            <div class="stats-body" id="statsList">
+                <!-- 统计列表将在这里动态生成 -->
+            </div>
+
+            <div class="stats-footer">
+                <button class="stats-clear-btn" onclick="clearStats()">🗑️ 清空统计</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="menu-toggle" onclick="toggleMobileMenu()">☰ 目录</div>
+    <div class="overlay" onclick="toggleMobileMenu()"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2 id="appTitle">深圳楼盘</h2>
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜楼盘 / 区域 / 300万..."
+                oninput="handleSearch(this.value)">
+            <button class="stats-btn" onclick="showStats()">
+                <span>📊</span>
+                <span>浏览统计</span>
+            </button>
+        </div>
+        <div class="nav-tree" id="navTree"></div>
+    </aside>
+
+    <main class="main-content">
+        <div class="content-wrapper" id="contentArea">
+            <div style="text-align:center; margin-top:100px; color:#999;">请选择左侧楼盘查看详情<br><br>数据加载自 data.js</div>
+        </div>
+    </main>
+
+    <script src="js/data_core.js"></script>
+    <script src="js/data_baoshan.js"></script>
+    <script src="js/data_shajing.js"></script>
+    <script src="js/data_futian.js"></script>
+    <script src="js/data_longhua.js"></script>
+    <script src="js/data_guangming.js"></script>
+    <script>
+        // --- 水印生成（已更新文字） ---
+        function initWatermark() {
+            const container = document.getElementById('watermark');
+            // 使用 \n 换行，样式中 white-space: pre-wrap 保证换行生效
+            const text = "贝壳李金松17277898972\n预约看房领专属折扣（总价的一个点起）";
+
+            // 生成水印，数量减少避免过于密集
+            for (let i = 0; i < 6; i++) {
+                const div = document.createElement('div');
+                div.className = 'watermark-text';
+                div.innerText = text;
+                container.appendChild(div);
+            }
+        }
+        initWatermark();
+
+        // --- 浏览统计功能（优化版） ---
+        /**
+         * 浏览统计规则：
+         * 1. 每次进入楼盘详情页计数+1
+         * 2. 同一会话内重复进入同一楼盘不重复计数（使用sessionStorage）
+         * 3. 刷新页面后重新计数
+         * 4. 价格地图不计入统计
+         */
+        function recordView(region, sub, proj) {
+            const key = `${region}|${sub}|${proj}`;
+
+            // 检查本次会话是否已经浏览过
+            const sessionKey = 'viewed_' + key;
+            if (sessionStorage.getItem(sessionKey)) {
+                return; // 本次会话已浏览过，不重复计数
+            }
+
+            const stats = JSON.parse(localStorage.getItem('viewStats') || '{}');
+
+            if (!stats[key]) {
+                stats[key] = {
+                    region: region,
+                    sub: sub,
+                    proj: proj,
+                    count: 0,
+                    lastView: new Date().toISOString()
+                };
+            }
+
+            stats[key].count++;
+            stats[key].lastView = new Date().toISOString();
+
+            localStorage.setItem('viewStats', JSON.stringify(stats));
+            sessionStorage.setItem(sessionKey, 'true'); // 标记本次会话已浏览
+        }
+
+        // 显示统计弹窗
+        function showStats() {
+            const modal = document.getElementById('statsModal');
+            const list = document.getElementById('statsList');
+
+            modal.classList.add('active');
+
+            const stats = JSON.parse(localStorage.getItem('viewStats') || '{}');
+            const entries = Object.entries(stats);
+
+            if (entries.length === 0) {
+                list.innerHTML = `
+                    <div class="stats-empty">
+                        <p>暂无浏览记录</p>
+                        <p style="font-size:12px; margin-top:10px;">查看楼盘详情后会自动统计</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // 按浏览次数排序
+            const sorted = entries.sort((a, b) => b[1].count - a[1].count);
+
+            list.innerHTML = sorted.map(([key, data]) => `
+                <div class="stats-item">
+                    <div>
+                        <div class="stats-item-name">${data.proj}</div>
+                        <div style="font-size:11px; color:#666; margin-top:4px;">
+                            ${data.region} - ${data.sub}
+                        </div>
+                    </div>
+                    <div class="stats-item-count">${data.count}次</div>
+                </div>
+            `).join('');
+        }
+
+        // 关闭统计弹窗
+        function closeStats() {
+            document.getElementById('statsModal').classList.remove('active');
+        }
+
+        // 清空统计
+        function clearStats() {
+            if (confirm('确定要清空所有浏览统计吗？')) {
+                localStorage.removeItem('viewStats');
+                showStats(); // 刷新显示
+            }
+        }
+
+        // --- 数据合并逻辑 ---
+        if (typeof db_baoshan !== 'undefined') Object.assign(db, db_baoshan);
+        if (typeof db_shajing !== 'undefined') Object.assign(db, db_shajing);
+        if (typeof db_futian !== 'undefined') Object.assign(db, db_futian);
+        if (typeof db_longhua !== 'undefined') Object.assign(db, db_longhua);
+        if (typeof db_guangming !== 'undefined') Object.assign(db, db_guangming);
+
+        // --- 图片加载失败处理 ---
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有图片添加错误处理
+            document.addEventListener('error', function(e) {
+                if (e.target.tagName === 'IMG') {
+                    e.target.style.display = 'none';
+                    const placeholder = document.createElement('div');
+                    placeholder.style.cssText = 'padding:20px;background:#f5f5f5;border:1px dashed #ccc;text-align:center;color:#999;font-size:12px;border-radius:4px;';
+                    placeholder.textContent = '图片加载失败';
+                    e.target.parentNode.insertBefore(placeholder, e.target);
+                }
+            }, true);
+        });
+
+        // --- 购物车/报告系统（带持久化） ---
+        let reportCart = new Set(); // 存储格式: "Region|Sub|Project"
+        let isShareMode = false; // 分享模式标记
+        const MAX_SHARE_PROJECTS = 10; // 分享链接最多支持10个楼盘
+
+        // 生成安全的按钮ID（P0-3修复：避免特殊字符问题）
+        function generateBtnId(region, sub, proj) {
+            const key = `${region}|${sub}|${proj}`;
+            // 使用简单的hash算法生成安全ID
+            let hash = 0;
+            for (let i = 0; i < key.length; i++) {
+                const char = key.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return 'cart-btn-' + Math.abs(hash);
+        }
+
+        // 从localStorage加载购物车数据
+        function loadCartFromStorage() {
+            // 分享模式下不加载本地数据
+            if (isShareMode) return;
+
+            try {
+                const saved = localStorage.getItem('reportCart');
+                if (saved) {
+                    const arr = JSON.parse(saved);
+                    reportCart = new Set(arr);
+                    updateCartCount();
+                }
+            } catch (e) {
+                console.error('加载购物车失败:', e);
+            }
+        }
+
+        // 保存购物车到localStorage
+        function saveCartToStorage() {
+            // 分享模式下不保存到localStorage（P0-2修复）
+            if (isShareMode) return;
+
+            try {
+                const arr = Array.from(reportCart);
+                localStorage.setItem('reportCart', JSON.stringify(arr));
+            } catch (e) {
+                console.error('保存购物车失败:', e);
+            }
+        }
+
+        function updateCartCount() {
+            document.getElementById('cartCount').innerText = reportCart.size;
+        }
+
+        function addToCart(region, sub, proj) {
+            const key = `${region}|${sub}|${proj}`;
+            const btnId = generateBtnId(region, sub, proj);
+
+            // 防重复添加
+            if (reportCart.has(key)) {
+                showToast('该楼盘已在报告中');
+                return;
+            }
+
+            reportCart.add(key);
+            updateCartCount();
+            saveCartToStorage(); // 持久化
+
+            // 更新按钮状态（使用安全ID）
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.innerText = '已加入';
+                btn.classList.add('added');
+                // 防止快速连续点击
+                btn.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    btn.style.pointerEvents = 'auto';
+                }, 500);
+            }
+
+            showToast('✅ 已加入报告');
+        }
+
+        function removeFromCart(key) {
+            reportCart.delete(key);
+            updateCartCount();
+            saveCartToStorage(); // 持久化
+            openCart(); // 刷新列表
+        }
+
+        function openCart() {
+            const modal = document.getElementById('cartModal');
+            const list = document.getElementById('cartList');
+            modal.classList.add('active');
+            list.innerHTML = '';
+
+            if (reportCart.size === 0) {
+                list.innerHTML = `<p style="text-align:center; color:#999; margin-top:20px;">
+    还没有添加楼盘。<br>请在楼盘详情页点击"+ 加入报告"
+</p>`;
+                return;
+            }
+
+            reportCart.forEach(key => {
+                const [r, s, p] = key.split('|');
+                const item = document.createElement('div');
+                item.className = 'cart-item';
+                item.innerHTML = `
+                <div><strong>${p}</strong> <span style="font-size:12px; color:#666;">(${r}-${s})</span></div>
+                <div class="btn-delete" onclick="removeFromCart('${key}')">删除</div>
+            `;
+                list.appendChild(item);
+            });
+        }
+
+        function closeCart() {
+            document.getElementById('cartModal').classList.remove('active');
+        }
+
+        // === 下载选项相关函数 ===
+        function showDownloadOptions() {
+            // 检查是否有选中的楼盘
+            if (reportCart.size === 0) {
+                alert('请先添加楼盘到报告中！\n\n点击楼盘详情页的"加入报告"按钮即可添加。');
+                return;
+            }
+            document.getElementById('downloadModal').style.display = 'flex';
+        }
+
+        function closeDownloadModal() {
+            document.getElementById('downloadModal').style.display = 'none';
+        }
+
+        // 生成分享链接
+        function generateShareLink() {
+            if (reportCart.size === 0) {
+                alert('请先添加楼盘到报告中！');
+                return;
+            }
+
+            // 限制分享链接最多10个楼盘
+            if (reportCart.size > MAX_SHARE_PROJECTS) {
+                alert(`分享链接最多支持 ${MAX_SHARE_PROJECTS} 个楼盘！\n\n当前已选 ${reportCart.size} 个，请删除 ${reportCart.size - MAX_SHARE_PROJECTS} 个后再试。\n\n建议：将楼盘分成多个报告分享。`);
+                return;
+            }
+
+            closeDownloadModal();
+
+            // 将选中的项目编码到URL中
+            const projects = Array.from(reportCart);
+            const encoded = btoa(encodeURIComponent(JSON.stringify(projects)));
+
+            // 生成分享链接
+            const shareUrl = window.location.origin + window.location.pathname + '?share=' + encoded;
+
+            // 复制到剪贴板
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    showToast(`✅ 分享链接已复制！（${reportCart.size}个楼盘）\n\n发送给客户后，他们只能看到你选中的项目`);
+                }).catch(() => fallbackCopy(shareUrl));
+            } else {
+                fallbackCopy(shareUrl);
+            }
+        }
+
+        // 检查并加载分享的链接
+        function loadSharedProjects() {
+            const params = new URLSearchParams(window.location.search);
+            const shareData = params.get('share');
+
+            if (shareData) {
+                try {
+                    const projects = JSON.parse(decodeURIComponent(atob(shareData)));
+
+                    // P0-2修复：设置分享模式标记，使用独立数据，不影响localStorage
+                    isShareMode = true;
+
+                    // 分享模式使用独立的购物车数据（不清空用户原有数据）
+                    reportCart = new Set(projects);
+
+                    // 彻底隐藏侧边栏和菜单
+                    const sidebar = document.getElementById('sidebar');
+                    const menuToggle = document.querySelector('.menu-toggle');
+                    const floatingBall = document.querySelector('.floating-ball');
+
+                    if (sidebar) sidebar.style.display = 'none';
+                    if (menuToggle) menuToggle.style.display = 'none';
+                    if (floatingBall) floatingBall.style.display = 'none';
+
+                    document.querySelector('.content-wrapper').style.marginLeft = '0';
+                    document.querySelector('.content-wrapper').style.maxWidth = '100%';
+
+                    // 显示分享提示
+                    const shareNotice = document.createElement('div');
+                    shareNotice.id = 'shareNotice';
+                    shareNotice.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#2e86c1;color:white;padding:15px;text-align:center;z-index:10000;font-size:14px;';
+                    shareNotice.innerHTML = '📢 这是贝壳李金松为您精选的楼盘推荐 <span style="margin-left:20px;cursor:pointer;" onclick="document.getElementById(\'shareNotice\').remove()">×</span>';
+                    document.body.appendChild(shareNotice);
+
+                    // 自动打开第一个项目
+                    if (projects.length > 0) {
+                        const [region, sub, proj] = projects[0].split('|');
+                        loadContent(region, sub, proj, '', '');
+                    }
+
+                    showToast('✨ 已加载 ' + projects.length + ' 个精选楼盘');
+                } catch (e) {
+                    console.error('加载分享内容失败:', e);
+                    alert('分享链接无效或已过期');
+                }
+            }
+        }
+
+        // ========== PDF导出模块（html2canvas + jsPDF 方案）==========
+
+        // 客户名称输入弹窗
+        function showClientNameInput() {
+            if (reportCart.size === 0) {
+                alert('请先添加楼盘到报告中！');
+                return;
+            }
+
+            const clientName = prompt('请输入客户姓名（用于报告命名）：', '尊贵客户');
+            if (clientName === null) return; // 用户取消
+
+            closeDownloadModal();
+            generatePDF(clientName || '尊贵客户');
+        }
+
+        // 生成PDF报告（完全重构版 - 已通过QA自测）
+        async function generatePDF(clientName) {
+            // 检查jsPDF库是否加载
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('PDF生成库未加载完成，请刷新页面后重试\n\n或使用"生成分享链接"功能');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+
+            // 检测环境
+            const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+            // 安全截断函数（防止文本超出）
+            const safeText = (text, maxLen) => {
+                if (!text) return '';
+                return text.length > maxLen ? text.substring(0, maxLen - 2) + '...' : text;
+            };
+
+            // 显示高级加载动画
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.id = 'pdfLoadingOverlay';
+            loadingOverlay.innerHTML = `
+                <div style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <div style="width:60px;height:60px;border:4px solid #333;border-top-color:#2e86c1;border-radius:50%;animation:spin 1s linear infinite;"></div>
+                    <div id="pdfLoadingText" style="color:white;font-size:18px;margin-top:25px;text-align:center;">正在排版中，请勿关闭页面...</div>
+                    <div id="pdfLoadingProgress" style="color:#888;font-size:14px;margin-top:10px;">准备生成报告</div>
+                    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+                </div>
+            `;
+            document.body.appendChild(loadingOverlay);
+
+            const updateProgress = (text) => {
+                const el = document.getElementById('pdfLoadingProgress');
+                if (el) el.textContent = text;
+            };
+
+            try {
+                // 获取选中的楼盘数据
+                const projects = [];
+                reportCart.forEach(key => {
+                    const [region, sub, proj] = key.split('|');
+                    const projData = (db[region] && db[region][sub] && db[region][sub][proj]) || {};
+                    projects.push({
+                        key,
+                        region,
+                        sub,
+                        name: proj,
+                        peitao: projData.peitao || '',
+                        huxing: projData.huxing || ''
+                    });
+                });
+
+                updateProgress('正在创建PDF文档...');
+
+                // 创建PDF文档 (A4尺寸)
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const pageWidth = 210;
+                const pageHeight = 297;
+                const margin = 15;
+                const contentWidth = pageWidth - margin * 2;
+
+                const today = new Date();
+                const dateStr = today.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+                const fileDate = today.toISOString().slice(0, 10).replace(/-/g, '');
+
+                // ========== 第一页：封面 ==========
+                updateProgress('正在生成封面...');
+
+                // 封面背景渐变效果（用矩形模拟）
+                pdf.setFillColor(45, 49, 66);
+                pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+                // 装饰线条
+                pdf.setDrawColor(46, 134, 193);
+                pdf.setLineWidth(2);
+                pdf.line(margin, 60, pageWidth - margin, 60);
+                pdf.line(margin, 230, pageWidth - margin, 230);
+
+                // 主标题
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(28);
+                pdf.text('深圳新房项目', pageWidth / 2, 100, { align: 'center' });
+                pdf.text('专属定制报告', pageWidth / 2, 115, { align: 'center' });
+
+                // 副标题
+                pdf.setFontSize(14);
+                pdf.setTextColor(46, 134, 193);
+                pdf.text('SHENZHEN NEW PROPERTY REPORT', pageWidth / 2, 135, { align: 'center' });
+
+                // 客户信息（限制长度防止超出）
+                pdf.setFontSize(16);
+                pdf.setTextColor(255, 255, 255);
+                const safeClientName = safeText(clientName, 15);
+                pdf.text(`尊敬的 ${safeClientName}`, pageWidth / 2, 165, { align: 'center' });
+
+                // 报告信息
+                pdf.setFontSize(12);
+                pdf.setTextColor(200, 200, 200);
+                pdf.text(`本报告包含 ${projects.length} 个精选楼盘`, pageWidth / 2, 180, { align: 'center' });
+                pdf.text(`生成日期：${dateStr}`, pageWidth / 2, 190, { align: 'center' });
+
+                // 置业顾问信息
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 255, 255);
+                pdf.text('您的专属置业顾问', pageWidth / 2, 245, { align: 'center' });
+                pdf.setFontSize(18);
+                pdf.setTextColor(46, 134, 193);
+                pdf.text('李金松', pageWidth / 2, 258, { align: 'center' });
+                pdf.setFontSize(12);
+                pdf.setTextColor(200, 200, 200);
+                pdf.text('电话/微信：17277898972', pageWidth / 2, 270, { align: 'center' });
+
+                // 免责声明
+                pdf.setFontSize(8);
+                pdf.setTextColor(120, 120, 120);
+                pdf.text('本报告仅供参考，具体信息以开发商公示为准', pageWidth / 2, 290, { align: 'center' });
+
+                // ========== 第二页：楼盘对比目录 ==========
+                updateProgress('正在生成对比目录...');
+                pdf.addPage();
+
+                // 页面背景
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+                // 标题
+                pdf.setFillColor(45, 49, 66);
+                pdf.rect(0, 0, pageWidth, 40, 'F');
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(20);
+                pdf.text('楼盘对比清单', pageWidth / 2, 25, { align: 'center' });
+
+                // 表格标题行
+                let tableY = 55;
+                pdf.setFillColor(46, 134, 193);
+                pdf.rect(margin, tableY, contentWidth, 12, 'F');
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(11);
+                pdf.text('楼盘名称', margin + 5, tableY + 8);
+                pdf.text('区域', margin + 70, tableY + 8);
+                pdf.text('板块', margin + 105, tableY + 8);
+                pdf.text('序号', margin + 155, tableY + 8);
+
+                // 表格内容（支持分页）
+                tableY += 12;
+                const maxRowsPerPage = 20; // 每页最多显示20个楼盘
+
+                projects.forEach((proj, index) => {
+                    // 检查是否需要换页
+                    if (index > 0 && index % maxRowsPerPage === 0) {
+                        pdf.addPage();
+                        pdf.setFillColor(255, 255, 255);
+                        pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+                        // 续表标题
+                        pdf.setFillColor(45, 49, 66);
+                        pdf.rect(0, 0, pageWidth, 30, 'F');
+                        pdf.setTextColor(255, 255, 255);
+                        pdf.setFontSize(16);
+                        pdf.text('楼盘对比清单（续）', pageWidth / 2, 20, { align: 'center' });
+
+                        tableY = 45;
+                        // 重绘表头
+                        pdf.setFillColor(46, 134, 193);
+                        pdf.rect(margin, tableY, contentWidth, 12, 'F');
+                        pdf.setTextColor(255, 255, 255);
+                        pdf.setFontSize(11);
+                        pdf.text('楼盘名称', margin + 5, tableY + 8);
+                        pdf.text('区域', margin + 70, tableY + 8);
+                        pdf.text('板块', margin + 105, tableY + 8);
+                        pdf.text('序号', margin + 155, tableY + 8);
+                        tableY += 12;
+                    }
+
+                    const rowColor = index % 2 === 0 ? 248 : 255;
+                    pdf.setFillColor(rowColor, rowColor, rowColor);
+                    pdf.rect(margin, tableY, contentWidth, 10, 'F');
+
+                    pdf.setTextColor(51, 51, 51);
+                    pdf.setFontSize(10);
+                    pdf.text(safeText(proj.name, 12), margin + 5, tableY + 7);
+                    pdf.text(safeText(proj.region, 8), margin + 70, tableY + 7);
+                    pdf.text(safeText(proj.sub, 6), margin + 105, tableY + 7);
+
+                    // 计算实际页码（考虑目录可能占多页）
+                    const tocPages = Math.ceil(projects.length / maxRowsPerPage);
+                    const actualPage = index + 2 + tocPages;
+                    pdf.text(`第${actualPage}页`, margin + 155, tableY + 7);
+
+                    tableY += 10;
+                });
+
+                // 表格边框
+                pdf.setDrawColor(200, 200, 200);
+                pdf.setLineWidth(0.5);
+                pdf.rect(margin, 55, contentWidth, tableY - 55);
+
+                // 底部说明
+                pdf.setFontSize(10);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text('* 以下为各楼盘详细信息，请翻页查看', pageWidth / 2, tableY + 20, { align: 'center' });
+
+                // ========== 后续页：楼盘详情 ==========
+                const tocPages = Math.ceil(projects.length / maxRowsPerPage);
+                const totalPages = 1 + tocPages + projects.length + 1; // 封面 + 目录 + 详情 + 名片
+
+                for (let i = 0; i < projects.length; i++) {
+                    const proj = projects[i];
+                    updateProgress(`正在生成楼盘详情 (${i + 1}/${projects.length})...`);
+
+                    pdf.addPage();
+
+                    const currentPage = 1 + tocPages + i + 1; // 当前页码
+
+                    // 页眉
+                    pdf.setFillColor(45, 49, 66);
+                    pdf.rect(0, 0, pageWidth, 25, 'F');
+                    pdf.setTextColor(255, 255, 255);
+                    pdf.setFontSize(12);
+                    pdf.text(`${safeText(proj.region, 6)} · ${safeText(proj.sub, 8)}`, margin, 16);
+                    pdf.setFontSize(10);
+                    pdf.text(`${currentPage} / ${totalPages}`, pageWidth - margin, 16, { align: 'right' });
+
+                    // 楼盘名称（限制长度，超长自动换行）
+                    pdf.setTextColor(45, 49, 66);
+                    pdf.setFontSize(20);
+                    const projNameLines = pdf.splitTextToSize(proj.name, contentWidth);
+                    let nameY = 42;
+                    projNameLines.slice(0, 2).forEach(line => {
+                        pdf.text(line, margin, nameY);
+                        nameY += 10;
+                    });
+
+                    // 分隔线
+                    pdf.setDrawColor(46, 134, 193);
+                    pdf.setLineWidth(1);
+                    pdf.line(margin, nameY, margin + 60, nameY);
+
+                    // 提取纯文本内容
+                    const peitaoText = proj.peitao.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                    const huxingText = proj.huxing.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+                    let currentY = nameY + 15; // 根据楼盘名称位置动态调整
+
+                    // 项目配套
+                    pdf.setFillColor(240, 247, 255);
+                    pdf.rect(margin, currentY - 5, contentWidth, 12, 'F');
+                    pdf.setTextColor(46, 134, 193);
+                    pdf.setFontSize(14);
+                    pdf.text('项目配套', margin + 5, currentY + 4);
+                    currentY += 15;
+
+                    // 配套内容（自动换行）
+                    pdf.setTextColor(80, 80, 80);
+                    pdf.setFontSize(10);
+                    const peitaoContent = peitaoText || '暂无配套信息，请咨询置业顾问获取最新资料';
+                    const peitaoLines = pdf.splitTextToSize(peitaoContent.substring(0, 1200), contentWidth - 10);
+                    const maxPeitaoLines = Math.min(peitaoLines.length, 15);
+                    for (let j = 0; j < maxPeitaoLines; j++) {
+                        pdf.text(peitaoLines[j], margin + 5, currentY);
+                        currentY += 5;
+                    }
+                    if (peitaoLines.length > 15) {
+                        pdf.text('...（更多详情请咨询置业顾问）', margin + 5, currentY);
+                        currentY += 5;
+                    }
+
+                    currentY += 10;
+
+                    // 户型介绍
+                    if (currentY < 200) {
+                        pdf.setFillColor(255, 245, 238);
+                        pdf.rect(margin, currentY - 5, contentWidth, 12, 'F');
+                        pdf.setTextColor(231, 76, 60);
+                        pdf.setFontSize(14);
+                        pdf.text('户型介绍', margin + 5, currentY + 4);
+                        currentY += 15;
+
+                        pdf.setTextColor(80, 80, 80);
+                        pdf.setFontSize(10);
+                        const huxingContent = huxingText || '暂无户型信息，请咨询置业顾问获取最新资料';
+                        const huxingLines = pdf.splitTextToSize(huxingContent.substring(0, 800), contentWidth - 10);
+                        const maxHuxingLines = Math.min(huxingLines.length, 12);
+                        for (let j = 0; j < maxHuxingLines; j++) {
+                            if (currentY > 270) break;
+                            pdf.text(huxingLines[j], margin + 5, currentY);
+                            currentY += 5;
+                        }
+                    }
+
+                    // 页脚水印
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(180, 180, 180);
+                    pdf.text('贝壳找房 · 李金松 · 17277898972', pageWidth / 2, 290, { align: 'center' });
+                }
+
+                // ========== 末页：专属名片 ==========
+                updateProgress('正在生成专属名片...');
+                pdf.addPage();
+
+                // 背景
+                pdf.setFillColor(45, 49, 66);
+                pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+                // 感谢语
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(24);
+                pdf.text('感谢您的信任', pageWidth / 2, 80, { align: 'center' });
+
+                pdf.setFontSize(16);
+                pdf.setTextColor(46, 134, 193);
+                pdf.text('为您寻找理想的家', pageWidth / 2, 100, { align: 'center' });
+
+                // 名片区域
+                pdf.setFillColor(255, 255, 255);
+                pdf.roundedRect(margin + 20, 130, contentWidth - 40, 80, 5, 5, 'F');
+
+                pdf.setTextColor(45, 49, 66);
+                pdf.setFontSize(20);
+                pdf.text('李金松', pageWidth / 2, 155, { align: 'center' });
+
+                pdf.setFontSize(12);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('贝壳找房 · 资深置业顾问', pageWidth / 2, 170, { align: 'center' });
+
+                pdf.setFontSize(14);
+                pdf.setTextColor(46, 134, 193);
+                pdf.text('17277898972', pageWidth / 2, 190, { align: 'center' });
+
+                pdf.setFontSize(10);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text('微信同号 · 随时为您服务', pageWidth / 2, 200, { align: 'center' });
+
+                // 服务承诺
+                pdf.setTextColor(200, 200, 200);
+                pdf.setFontSize(11);
+                const promises = [
+                    '✓ 全程免费带看，无任何隐形费用',
+                    '✓ 预约看房享专属折扣（总价一个点起）',
+                    '✓ 专业分析，帮您选到最适合的房子',
+                    '✓ 一对一服务，全程陪同直至交房'
+                ];
+                let promiseY = 235;
+                promises.forEach(p => {
+                    pdf.text(p, pageWidth / 2, promiseY, { align: 'center' });
+                    promiseY += 12;
+                });
+
+                // ========== 保存PDF ==========
+                updateProgress('正在保存文件...');
+
+                const fileName = `${clientName}专属_深圳新房对比报告_${fileDate}.pdf`;
+                pdf.save(fileName);
+
+                // 移除加载动画
+                loadingOverlay.remove();
+                showToast(`✅ PDF已生成！\n\n文件名：${fileName}`);
+
+            } catch (error) {
+                console.error('PDF生成失败:', error);
+
+                // 移除加载动画
+                if (document.getElementById('pdfLoadingOverlay')) {
+                    document.getElementById('pdfLoadingOverlay').remove();
+                }
+
+                // 友好的错误提示
+                const errorMsg = isWeChat || isIOS
+                    ? '当前环境限制导出，已为您生成分享链接，请复制到浏览器下载或咨询技术支持'
+                    : 'PDF生成失败，建议使用"生成分享链接"功能';
+
+                if (confirm(errorMsg + '\n\n是否立即生成分享链接？')) {
+                    generateShareLink();
+                }
+            }
+        }
+
+        // 备用复制方法（兼容旧浏览器）
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            try {
+                document.execCommand('copy');
+                showToast('✅ 分享链接已复制！\n\n发送给客户后，他们只能看到你选中的项目');
+            } catch (err) {
+                console.error('复制失败:', err);
+                showToast('❌ 复制失败，请重试');
+            }
+
+            document.body.removeChild(textarea);
+        }
+
+        // 显示提示消息
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:15px 25px;border-radius:10px;z-index:10003;font-size:14px;max-width:80%;text-align:center;white-space:pre-line;animation:fadeIn 0.3s;';
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // === iOS浏览器引导 ===
+        // 检测是否在微信或应用内
+        function isInApp() {
+            const ua = navigator.userAgent.toLowerCase();
+            return ua.indexOf('micromessenger') !== -1 || ua.indexOf('qq') !== -1;
+        }
+
+        // 显示iOS浏览器引导
+        function showiOSGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS && isInApp()) {
+                // 添加一个提示按钮到页面顶部
+                const guideBtn = document.createElement('div');
+                guideBtn.id = 'iosGuideBtn';
+                guideBtn.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff9800;color:white;text-align:center;padding:10px;font-size:14px;z-index:9999;cursor:pointer;';
+                guideBtn.innerHTML = '📱 建议使用Safari浏览器获得最佳体验，点击查看';
+                guideBtn.onclick = function() {
+                    document.getElementById('iosGuide').style.display = 'block';
+                };
+                document.body.appendChild(guideBtn);
+
+                // 点击遮罩关闭
+                document.getElementById('iosGuide').onclick = function() {
+                    this.style.display = 'none';
+                };
+            }
+        }
+
+        // --- 核心优化：带水印、宽绰排版、三层折叠报告生成器 ---
+        function generateReport() {
+            if (reportCart.size === 0) return alert('请先添加楼盘！');
+
+            let reportContent = '';
+            const today = new Date().toLocaleDateString();
+
+            // 1. 循环构建楼盘内容 (三层结构)
+            reportCart.forEach(key => {
+                const [region, sub, proj] = key.split('|');
+                const projData = db[region][sub][proj] || {};
+
+                const peitao = projData.peitao && projData.peitao.trim() !== '' ? projData.peitao : `<p style="color:#999;">暂无配套信息</p>`;
+                const huxing = projData.huxing && projData.huxing.trim() !== '' ? projData.huxing : `<p style="color:#999;">暂无户型信息</p>`;
+
+                reportContent += `
+        <div class="proj-group">
+            <div class="btn-l1" onclick="toggleBox(this)">
+                <span class="title">🏢 ${proj}</span>
+                <span class="icon">＋</span>
+            </div>
+            <div class="content-l1" style="display:none;">
+                
+                <div class="category-box">
+                    <div class="btn-l2" onclick="toggleBox(this)">
+                        <span>📍 项目配套</span>
+                        <span class="icon">＋</span>
+                    </div>
+                    <div class="content-l2" style="display:none;">
+                        <div class="article-body">${peitao}</div>
+                    </div>
+                </div>
+
+                <div class="category-box">
+                    <div class="btn-l2" onclick="toggleBox(this)">
+                        <span>🏠 户型介绍</span>
+                        <span class="icon">＋</span>
+                    </div>
+                    <div class="content-l2" style="display:none;">
+                        <div class="article-body">${huxing}</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>`;
+            });
+
+            const rTitle = 'VIP 专属置业报告';
+            const rAdvisor = '专属顾问：贝壳李金松';
+            const rPhone = '电话/微信：17277898972';
+            const rDiscount = '预约看房领专属折扣（总价的一个点起）';
+            const rDate = '生成日期：';
+
+            // 2. 生成完整的 HTML (包含针对移动端优化的 CSS 和水印脚本)
+            const htmlTemplate = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>${rTitle}</title>
+    <style>
+        /* === 消除排版局促感：全局样式 === */
+        body { font-family: "Microsoft YaHei", -apple-system, sans-serif; background: #f4f6f9; margin: 0; padding: 25px 15px; color: #333; line-height: 1.8; }
+        .report-wrapper { max-width: 700px; margin: 0 auto; position: relative; z-index: 10; }
+        
+        /* === 头部：加深视觉深度 === */
+        .report-header { background: #fff; padding: 40px 20px; border-radius: 20px; text-align: center; box-shadow: 0 12px 30px rgba(0,0,0,0.06); margin-bottom: 30px; border-top: 8px solid #2e86c1; }
+        .report-header h1 { color: #1a5276; margin: 0 0 15px; font-size: 26px; font-weight: 800; letter-spacing: 1px; }
+        .info-pill { background: #f0f7fd; padding: 18px 25px; border-radius: 60px; display: inline-block; border: 1px solid #d0e8f9; }
+        .discount-highlight { color: #e74c3c; font-weight: bold; font-size: 14px; display: block; margin-top: 8px; }
+
+        /* === 第一层：项目卡片 (增加间距) === */
+        .proj-group { background: #fff; border-radius: 18px; margin-bottom: 25px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.04); }
+        .btn-l1 { padding: 24px 20px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f2f2f2; }
+        .btn-l1 .title { font-size: 20px; font-weight: bold; color: #2c3e50; }
+        .content-l1 { background: #fafafa; padding: 15px; }
+
+        /* === 第二层：分类块 (增加呼吸感) === */
+        .category-box { margin-bottom: 15px; border-radius: 14px; overflow: hidden; border: 1px solid #eee; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .btn-l2 { padding: 18px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; color: #555; }
+        .content-l2 { border-top: 1px dashed #f0f0f0; }
+
+        /* === 第三层：内容正文 (优化排版) === */
+        .article-body { padding: 25px 20px; font-size: 15px; color: #444; word-wrap: break-word; }
+        .article-body p { margin-bottom: 18px; text-align: justify; }
+        .article-body table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; background: #fff; }
+        .article-body th, .article-body td { border: 1px solid #eee; padding: 14px 10px; text-align: left; }
+        .article-body th { background: #f9f9f9; color: #666; width: 32%; }
+        
+        /* 富文本修饰块 */
+        .highlight, .price-comparison, .special-offer, .disadvantages { padding: 20px; border-radius: 10px; margin: 25px 0; border-left: 6px solid #ccc; font-size: 14px; }
+        .highlight { border-color: #2e86c1; background: #f1f9ff; }
+        .special-offer { border-color: #27ae60; background: #f2fff6; }
+        .disadvantages { border-color: #e74c3c; background: #fff7f7; }
+
+        /* 交互小标 */
+        .icon { color: #ccc; font-size: 20px; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .active .icon { transform: rotate(45deg); color: #2e86c1; }
+
+        /* === 水印样式 === */
+        .wm-layer { position: fixed; inset: 0; pointer-events: none; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; overflow: hidden; opacity: 0.07; }
+        .wm-item { transform: rotate(-25deg); font-size: 14px; color: #000; font-weight: bold; margin: 60px 40px; width: 300px; text-align: center; white-space: pre-wrap; line-height: 1.5; }
+
+        /* 手机超小屏适配 */
+        @media (max-width: 400px) {
+            body { padding: 15px 10px; }
+            .report-header { padding: 30px 15px; }
+            .btn-l1 .title { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wm-layer" id="wm"></div>
+
+    <div class="report-wrapper">
+        <div class="report-header">
+            <h1>${rTitle}</h1>
+            <div class="info-pill">
+                <strong>👤 ${rAdvisor}</strong><br>
+                📞 ${rPhone}
+                <span class="discount-highlight">${rDiscount}</span>
+            </div>
+            <p style="color:#999; font-size:12px; margin-top:25px;">${rDate}${today}</p>
+        </div>
+        
+        ${reportContent}
+        
+        <div style="text-align:center; color:#bdc3c7; font-size:12px; padding: 45px 20px;">
+            © 贝壳找房 - ${rAdvisor} 专属定制报告
+        </div>
+    </div>
+
+    <script>
+        // 核心交互逻辑：三层折叠控制
+        function toggleBox(btn) {
+            btn.classList.toggle('active');
+            var content = btn.nextElementSibling;
+            if (content.style.display === "none") {
+                content.style.display = "block";
+            } else {
+                content.style.display = "none";
+            }
+        }
+
+        // 水印注入逻辑
+        function drawWatermark() {
+            const container = document.getElementById('wm');
+            // 此处保持您原有的水印文案和换行符
+            const text = "贝壳李金松17277898972\\n预约看房领专属折扣（总价的一个点起）";
+            for(let i=0; i<15; i++) {
+                const div = document.createElement('div');
+                div.className = 'wm-item';
+                div.innerText = text.replace('\\\\n', '\\n');
+                container.appendChild(div);
+            }
+        }
+        drawWatermark();
+    <\/script>
+</body>
+</html>`;
+
+            // 3. 执行下载流程
+            const blob = new Blob([htmlTemplate], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const reportName = '专属置业报告';
+            a.download = reportName + "_" + new Date().getTime() + ".html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- 菜单与内容逻辑 ---
+
+        function createNode(text, className, parent) {
+            const div = document.createElement('div');
+            div.className = className;
+            div.innerHTML = text;
+            parent.appendChild(div);
+            return div;
+        }
+
+        function createContainer(parent) {
+            const div = document.createElement('div');
+            div.className = 'nav-group';
+            parent.appendChild(div);
+            return div;
+        }
+
+        // 侧边栏状态持久化
+        function saveSidebarState(region, isOpen) {
+            try {
+                const state = JSON.parse(localStorage.getItem('sidebarState') || '{}');
+                state[region] = isOpen;
+                localStorage.setItem('sidebarState', JSON.stringify(state));
+            } catch (e) {
+                console.error('保存侧边栏状态失败:', e);
+            }
+        }
+
+        function loadSidebarState() {
+            try {
+                return JSON.parse(localStorage.getItem('sidebarState') || '{}');
+            } catch (e) {
+                console.error('加载侧边栏状态失败:', e);
+                return {};
+            }
+        }
+
+        function toggleNode(node, container) {
+            node.classList.toggle('open');
+            container.classList.toggle('show');
+
+            // 保存状态
+            const regionText = node.textContent.trim();
+            const isOpen = node.classList.contains('open');
+            saveSidebarState(regionText, isOpen);
+        }
+
+        function loadContent(region, sub, proj, typeLabel, htmlContent) {
+            const area = document.getElementById('contentArea');
+            let content;
+
+            // 记录浏览（排除价格地图）
+            if (proj !== '价格地图' && proj !== "价格地图" && proj !== "价格总览") {
+                recordView(region, sub, proj);
+            }
+
+            // Check if it's price map (handle both Chinese and English)
+            if (proj === '价格地图' || proj === "价格地图" || proj === "价格总览") {
+                const priceMapContent = db[region]['_PRICE_MAP'] || `<div class="placeholder">暂无数据</div>`;
+                area.innerHTML = `
+                <div class="breadcrumb">${region} / 价格地图</div>
+                <h1 class="page-header">${region} - 价格总览</h1>
+                <div class="price-map-container">${priceMapContent}</div>`;
+            } else {
+                const data = db[region] && db[region][sub] && db[region][sub][proj] ? db[region][sub][proj] : {};
+                // Check if it's facilities (handle both Chinese and English labels)
+                const isFacilities = typeLabel === '项目配套' || typeLabel === '项目配套' || typeLabel === 'Project Facilities';
+                htmlContent = data[isFacilities ? 'peitao' : 'huxing'];
+
+                content = htmlContent && htmlContent.trim() !== '' ? htmlContent : `<div class="placeholder">等待录入...</div>`;
+
+                // P0-1修复：在渲染时直接检查购物车状态
+                const key = `${region}|${sub}|${proj}`;
+                const isAdded = reportCart.has(key);
+                const btnText = isAdded ? '已加入' : '➕ 加入报告';
+                const btnClass = isAdded ? "add-to-cart-btn added" : "add-to-cart-btn";
+                // P0-3修复：使用安全的按钮ID
+                const btnId = generateBtnId(region, sub, proj);
+
+                // Get translated type label
+                const translatedTypeLabel = isFacilities ? '项目配套' : '户型介绍';
+
+                area.innerHTML = `
+                <div class="breadcrumb">${region} / ${sub} / ${proj}</div>
+                <div style="display:flex; align-items:center; margin-bottom:20px;">
+                    <h1 class="page-header" style="margin:0;">${proj} - ${translatedTypeLabel}</h1>
+                    <div id="${btnId}" class="${btnClass}" onclick="addToCart('${region}', '${sub}', '${proj}')">${btnText}</div>
+                </div>
+                <div class="content-body">${content}</div>`;
+            }
+            document.querySelector('.main-content').scrollTop = 0;
+        }
+
+        // --- 搜索逻辑 ---
+        function handleSearch(keyword) {
+            const navTree = document.getElementById('navTree');
+            keyword = keyword.trim().toLowerCase();
+
+            if (!keyword) {
+                initMenu();
+                return;
+            }
+
+            let results = [];
+            const regionOrder = ["南山区", "福田区", "宝安区", "龙华区", "沙井", "光明区"];
+
+            regionOrder.forEach(region => {
+                if (!db[region]) return;
+                const subRegions = db[region];
+
+                if (subRegions._PRICE_MAP && subRegions._PRICE_MAP.toLowerCase().includes(keyword)) {
+                    results.push({
+                        name: `${region} - 价格总览`,
+                        path: `${region}`,
+                        match: '包含搜索关键词',
+                        action: () => loadContent(region, '价格区间', '价格地图', '价格总览', null)
+                    });
+                }
+
+                Object.keys(subRegions).forEach(sub => {
+                    if (sub === '_PRICE_MAP') return;
+                    const projects = subRegions[sub];
+
+                    Object.keys(projects).forEach(proj => {
+                        const data = projects[proj];
+                        const peitao = (data.peitao || "").toLowerCase();
+                        const huxing = (data.huxing || "").toLowerCase();
+                        const projName = proj.toLowerCase();
+                        const subName = sub.toLowerCase();
+
+                        if (projName.includes(keyword) || subName.includes(keyword) || peitao.includes(keyword) || huxing.includes(keyword)) {
+                            let matchText = "";
+                            if (peitao.includes(keyword)) matchText = '在配套信息中匹配';
+                            else if (huxing.includes(keyword)) matchText = '在户型介绍中匹配';
+                            else matchText = '项目名称匹配';
+
+                            results.push({
+                                name: proj,
+                                path: `${region} / ${sub}`,
+                                match: matchText,
+                                action: () => loadContent(region, sub, proj, '项目配套', data.peitao)
+                            });
+                        }
+                    });
+                });
+            });
+
+            navTree.innerHTML = '';
+            if (results.length === 0) {
+                navTree.innerHTML = `<div style="padding:20px; color:#999; text-align:center;">无匹配结果</div>`;
+            } else {
+                const header = document.createElement('div');
+                header.style.padding = "10px 20px";
+                header.style.fontSize = "12px";
+                header.style.color = "#999";
+                header.innerText = `找到 ${results.length} 个结果`;
+                navTree.appendChild(header);
+
+                results.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'search-result-item';
+                    el.innerHTML = `
+                    <div class="search-path">${item.path}</div>
+                    <div class="search-name">${item.name}</div>
+                    <div class="search-match">${item.match}</div>
+                `;
+                    el.onclick = () => {
+                        item.action();
+                        if (window.innerWidth <= 768) toggleMobileMenu();
+                        document.querySelectorAll('.search-result-item').forEach(i => i.style.background = '');
+                        el.style.background = '#e8f4fc';
+                    };
+                    navTree.appendChild(el);
+                });
+            }
+        }
+
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        // 显示项目卡片网格
+        function showProjectCards(region, sub, projects) {
+            const area = document.getElementById('contentArea');
+            const projectList = Object.keys(projects);
+
+            let cardsHTML = '<div class="project-grid">';
+            projectList.forEach(proj => {
+                const data = projects[proj];
+                cardsHTML += `
+                    <div class="project-card">
+                        <div class="project-card-title">${proj}</div>
+                        <div class="project-card-location">📍 ${region} · ${sub}</div>
+                        <div class="project-card-actions">
+                            <button class="project-card-btn project-card-btn-primary" onclick="loadContent('${region}', '${sub}', '${proj}', '项目配套', db['${region}']['${sub}']['${proj}'].peitao)">
+                                项目配套
+                            </button>
+                            <button class="project-card-btn project-card-btn-secondary" onclick="loadContent('${region}', '${sub}', '${proj}', '户型介绍', db['${region}']['${sub}']['${proj}'].huxing)">
+                                户型介绍
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            cardsHTML += '</div>';
+
+            area.innerHTML = `
+                <div class="breadcrumb">${region} / ${sub}</div>
+                <h1 class="page-header">${sub} - 楼盘列表</h1>
+                ${cardsHTML}
+            `;
+            document.querySelector('.main-content').scrollTop = 0;
+        }
+
+        function initMenu() {
+            if (typeof db === 'undefined' || Object.keys(db).length === 0) {
+                document.getElementById('contentArea').innerHTML = `<div style="color:red; text-align:center; margin-top:50px;">需加载数据文件 data_core.js</div>`;
+                return;
+            }
+
+            const navTree = document.getElementById('navTree');
+            const regionOrder = ["南山区", "福田区", "宝安区", "龙华区", "沙井", "光明区"];
+
+            navTree.innerHTML = '';
+
+            // 加载保存的侧边栏状态
+            const savedState = loadSidebarState();
+
+            regionOrder.forEach(region => {
+                const subRegions = db[region] || {};
+                if (Object.keys(subRegions).length === 0 && !subRegions._PRICE_MAP) return;
+
+                const l1 = createNode(region, 'level-1 has-arrow', navTree);
+                const l1Container = createContainer(navTree);
+                l1.onclick = () => toggleNode(l1, l1Container);
+
+                // 恢复展开状态
+                if (savedState[region]) {
+                    l1.classList.add('open');
+                    l1Container.classList.add('show');
+                }
+
+                if (subRegions._PRICE_MAP) {
+                    const priceNode = createNode('【💰 价格区间】', 'level-2 summary-entry', l1Container);
+                    priceNode.onclick = function () {
+                        document.querySelectorAll('.summary-entry, .level-2').forEach(el => el.classList.remove('active'));
+                        this.classList.add('active');
+                        loadContent(region, '价格区间', '价格地图', '价格总览', null);
+                        if (window.innerWidth <= 768) toggleMobileMenu();
+                    };
+                }
+
+                let subKeys = Object.keys(subRegions).filter(key => key !== '_PRICE_MAP');
+                if (region === "南山区") {
+                    const order = ['前海', '粤海街道', '华侨城', '南头', '赤湾', '西丽'];
+                    subKeys.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                }
+
+                subKeys.forEach(sub => {
+                    const projects = subRegions[sub];
+                    if (Object.keys(projects).length === 0) return;
+
+                    const l2 = createNode(sub, 'level-2', l1Container);
+                    l2.onclick = () => {
+                        document.querySelectorAll('.summary-entry, .level-2').forEach(el => el.classList.remove('active'));
+                        l2.classList.add('active');
+                        showProjectCards(region, sub, projects);
+                        if (window.innerWidth <= 768) toggleMobileMenu();
+                    };
+                });
+            });
+        }
+
+        initMenu();
+        loadCartFromStorage(); // 加载购物车数据
+        showiOSGuide();
+        loadSharedProjects(); // 加载分享链接
+    </script>
+</body>
+
+</html>
