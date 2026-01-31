@@ -354,15 +354,15 @@ const db = {
                 <p>以下为南山区在售楼盘及主要面积段、起步总价对比，供快速查阅。</p>
                 <h3>250万 - 只能买一房</h3>
                 <table>
-                    <thead><tr><th style='width:25%'>楼盘名称</th><th style='width:35%'>价格/户型</th><th>核心卖点</th></tr></thead>
+                    <thead><tr><th style='width:25%; color:#000; background:#f5f5f5;'>楼盘名称</th><th style='width:35%; color:#000; background:#f5f5f5;'>价格/户型</th><th style='color:#000; background:#f5f5f5;'>核心卖点</th></tr></thead>
                     <tbody>
-                        <tr><td><strong>前海东岸 (南头)</strong></td><td>37㎡单房折后245万起<br>50㎡1房1厅折后348万左右<br>76㎡2房1厅折后520万-550万<br>现楼带租约：37㎡约5300元/月，50㎡约7700元/月，76㎡约11000元/月，南北向相差1000-1200元</td><td>上车门槛低、南山一梯队名校、地铁口、现楼</td></tr>
+                        <tr><td><strong>前海东岸 (南头)</strong></td><td>37㎡单房折后245万起<br>50㎡1房1厅折后348万左右<br>76㎡2房1厅折后520万-550万<br>现楼带租约：37㎡约5300元/月，50㎡约7700元/月，76㎡约11000元/月，南北向相差1000-1200元</td><td>1.稀缺现房小户型 2.优质学区资源 3.双地铁交通预期 4.生态景观优越 5.低门槛入住南山</td></tr>
                         <tr><td><strong>山樾湾花园 (前海)</strong></td><td>约70㎡两房：总价255万-312万<br>约90㎡三房：总价341万-409万</td><td>安居房（总价低）、前海稀缺上车盘</td></tr>
                     </tbody>
                 </table>
                 <h3>400万 - 600万 (两房/三房)</h3>
                 <table>
-                    <thead><tr><th style='width:25%'>楼盘名称</th><th style='width:35%'>价格/户型</th><th>核心卖点</th></tr></thead>
+                    <thead><tr><th style='width:25%; color:#000; background:#f5f5f5;'>楼盘名称</th><th style='width:35%; color:#000; background:#f5f5f5;'>价格/户型</th><th style='color:#000; background:#f5f5f5;'>核心卖点</th></tr></thead>
                     <tbody>
                         <tr><td><strong>卓越珑秀公馆 (南头)</strong></td><td>65㎡两房折后总价388-423万元<br>81㎡三房折后总价503-536万元</td><td>性价比高、位置好，新规住宅、近地铁/学校</td></tr>
                         <tr><td><strong>丹华公馆 (西丽)</strong></td><td>58平，总价300多万<br>7-206：原价450万→一口价390万<br>7-403：原价447万→一口价388万<br>7-1803：原价455万→一口价395万<br>7-1808：原价454万→一口价393万<br>7-3111：原价473万→一口价410万</td><td>深中创新学区、准现房、倒挂3万/㎡</td></tr>
@@ -371,7 +371,7 @@ const db = {
                 </table>
                 <h3>600万 - 800万 (品质三房/四房)</h3>
                 <table>
-                    <thead><tr><th style='width:25%'>楼盘名称</th><th style='width:35%'>价格/户型</th><th>核心卖点</th></tr></thead>
+                    <thead><tr><th style='width:25%; color:#000; background:#f5f5f5;'>楼盘名称</th><th style='width:35%; color:#000; background:#f5f5f5;'>价格/户型</th><th style='color:#000; background:#f5f5f5;'>核心卖点</th></tr></thead>
                     <tbody>
                         <tr><td><strong>开云府 (赤湾)</strong></td><td>124㎡三房两厅总价612万起，单价约4.9万/㎡<br>129㎡三房两厅总价637万起，单价约4.9万/㎡<br>203㎡四房三厅总价1006万起，单价约4.9万/㎡<br>工抵房：129㎡总价639.8万，单价4.96万/㎡<br>203㎡总价1005.9万，单价4.96万/㎡</td><td>双地铁口、一线海景、纯居地块、现楼</td></tr>
                         <tr><td><strong>鼎胜金域阳光 (西丽)</strong></td><td>约87㎡A户型：629-713万<br>约89㎡B户型：663-759万<br>约122㎡C户型：958-1074万<br>约130㎡D户型：991-1063万</td><td>留仙洞总部基地、双地铁口</td></tr>
@@ -383,7 +383,7 @@ const db = {
                 </table>
                 <h3>800万以上 (改善/核心地段)</h3>
                 <table>
-                    <thead><tr><th style='width:25%'>楼盘名称</th><th style='width:35%'>价格/户型</th><th>核心卖点</th></tr></thead>
+                    <thead><tr><th style='width:25%; color:#000; background:#f5f5f5;'>楼盘名称</th><th style='width:35%; color:#000; background:#f5f5f5;'>价格/户型</th><th style='color:#000; background:#f5f5f5;'>核心卖点</th></tr></thead>
                     <tbody>
                         <tr><td><strong>观山海 (前海)</strong></td><td>95平米三房两卫819—850万，113平米四房两卫863—960万，115平米四房两卫873—960万，138平米四房两卫1176—1390万</td><td>低容积率2.66、得房率95%、前海南稀缺</td></tr>
                         <tr><td><strong>荔源雅苑</strong></td><td>118㎡四房 800万</td><td>前海路、现楼</td></tr>
@@ -394,7 +394,7 @@ const db = {
                 </table>
                 <h3>特色景观盘 (山景/公园)</h3>
                 <table>
-                    <thead><tr><th style='width:25%'>楼盘名称</th><th style='width:35%'>价格/户型</th><th>核心卖点</th></tr></thead>
+                    <thead><tr><th style='width:25%; color:#000; background:#f5f5f5;'>楼盘名称</th><th style='width:35%; color:#000; background:#f5f5f5;'>价格/户型</th><th style='color:#000; background:#f5f5f5;'>核心卖点</th></tr></thead>
                     <tbody>
                         <tr><td><strong>方直珑樾山 (看塘朗山)</strong></td><td>120平米：总价1050-1200万<br>200-268平米：总价1850万-3006万</td><td>稀缺山景资源，改善首选</td></tr>
                         <tr><td><strong>汉园茗院 (看塘朗山)</strong></td><td>折后单价6万起<br>117㎡四房：700万起<br>120㎡四房：800万起<br>160㎡四房：1100万以内<br>185㎡四房：1300万以内</td><td>准现房，6月底交楼</td></tr>
